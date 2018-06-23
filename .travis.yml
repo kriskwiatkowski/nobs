@@ -2,4 +2,4 @@ sudo: required
 language: go
 
 script:
-  - make test
+  - go test -v ./...
