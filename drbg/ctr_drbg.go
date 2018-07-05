@@ -34,8 +34,6 @@ type CtrDrbg struct {
 
 func NewCtrDrbg() *CtrDrbg {
 	var c = new(CtrDrbg)
-	// Security strength for AES-256 as per SP800-57, 5.6.1
-	c.strength = 256
 	return c
 }
 
@@ -58,6 +56,9 @@ func (c *CtrDrbg) Init(entropy, personalization []byte) bool {
 	if len(entropy) < int(c.strength/8) {
 		return false
 	}
+
+	// Security strength for AES-256 as per SP800-57, 5.6.1
+	c.strength = 256
 
 	lsz = len(entropy)
 	if lsz > SeedLen {
