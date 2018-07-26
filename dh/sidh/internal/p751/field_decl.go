@@ -1,6 +1,6 @@
 // +build amd64,!noasm
 
-package p751toolbox
+package internal
 
 // If choice = 0, leave x,y unchanged. If choice = 1, set x,y = y,x.
 // If choice is neither 0 nor 1 then behaviour is undefined.

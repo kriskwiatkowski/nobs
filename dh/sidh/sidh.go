@@ -6,7 +6,7 @@ import (
 
 	// TODO: This is needed by ExtensionFieldElement struct, which itself
 	// 		 depends on implementation of p751.
-	. "github.com/henrydcase/nobs/dh/sidh/internal"
+	. "github.com/henrydcase/nobs/dh/sidh/internal/p751"
 )
 
 // -----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-package p751toolbox
+package internal
 
 import (
 	"math/big"

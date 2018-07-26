@@ -2,8 +2,9 @@ package sidh
 
 import (
 	"errors"
-	. "github.com/henrydcase/nobs/dh/sidh/internal"
 	"io"
+
+	. "github.com/henrydcase/nobs/dh/sidh/internal/p751"
 )
 
 // I keep it bool in order to be able to apply logical NOT

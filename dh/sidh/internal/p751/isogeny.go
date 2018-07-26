@@ -1,4 +1,4 @@
-package p751toolbox
+package internal
 
 // Interface for working with isogenies.
 type Isogeny interface {

@@ -1,4 +1,4 @@
-package p751toolbox
+package internal
 
 // Tools used for testing and debugging
 

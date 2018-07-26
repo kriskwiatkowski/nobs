@@ -166,13 +166,10 @@ func Encapsulate(rng io.Reader, pub *PublicKey) (ctext []byte, secret []byte, er
 	return ctext, secret, nil
 }
 
-// Decapsulate receives rng - cryptographically secure PRNG, keypair and ciphertext generated
-// by Encapsulate().
-// It returns shared secret in case cipertext was generated with 'pub' or random value otherwise.
-// Key generation, import and export functions ensure that if KEM decapsulation fails, always
-// same random value is returned.
-// Decapsulation may fail when wrongly formated input is provided or PRNG fails.
-func Decapsulate(rng io.Reader, prv *PrivateKey, pub *PublicKey, ctext []byte) ([]byte, error) {
+// Decapsulate given the keypair and ciphertext as inputs, Decapsulate outputs a shared
+// secret if plaintext verifies correctly, otherwise function outputs random value.
+// Decapsulation may fail in case input is wrongly formated.
+func Decapsulate(prv *PrivateKey, pub *PublicKey, ctext []byte) ([]byte, error) {
 	var params = pub.Params()
 	var r = make([]byte, params.SecretKeySize)
 	// Resulting shared secret
@@ -194,10 +191,8 @@ func Decapsulate(rng io.Reader, prv *PrivateKey, pub *PublicKey, ctext []byte) (
 	r[len(r)-1] &= params.A.MaskBytes[0]
 	r[len(r)-2] &= params.A.MaskBytes[1] // clear high bits, so scalar < 2*732
 
-	err = skA.Import(r)
-	if err != nil {
-		return nil, err
-	}
+	// Never fails
+	skA.Import(r)
 
 	pkA, _ := GeneratePublicKey(skA) // Never fails
 	c0 := pkA.Export()

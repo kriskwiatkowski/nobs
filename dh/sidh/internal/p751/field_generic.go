@@ -1,6 +1,6 @@
 // +build noasm arm64 arm
 
-package p751toolbox
+package internal
 
 // helper used for uint128 representation
 type uint128 struct {

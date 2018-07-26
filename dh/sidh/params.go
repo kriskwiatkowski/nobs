@@ -1,6 +1,6 @@
 package sidh
 
-import . "github.com/henrydcase/nobs/dh/sidh/internal"
+import . "github.com/henrydcase/nobs/dh/sidh/internal/p751"
 
 type DomainParams struct {
 	// P, Q and R=P-Q base points

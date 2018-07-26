@@ -131,7 +131,7 @@ func testKEMRoundTrip(pkB, skB []byte) bool {
 		return false
 	}
 
-	ss_d, err := Decapsulate(rand.Reader, sk, pk, ct)
+	ss_d, err := Decapsulate(sk, pk, ct)
 	if err != nil {
 		return false
 	}
@@ -157,7 +157,7 @@ func TestKEMKeyGeneration(t *testing.T) {
 	// calculated shared secret
 	ct, ss_e, err := Encapsulate(rand.Reader, pk)
 	checkErr(t, err, "encapsulation failed")
-	ss_d, err := Decapsulate(rand.Reader, sk, pk, ct)
+	ss_d, err := Decapsulate(sk, pk, ct)
 	checkErr(t, err, "decapsulation failed")
 
 	if !bytes.Equal(ss_e, ss_d) {
@@ -174,7 +174,7 @@ func TestNegativeKEM(t *testing.T) {
 	checkErr(t, err, "pre-requisite for a test failed")
 
 	ct[0] ^= ct[0]
-	ss_d, err := Decapsulate(rand.Reader, sk, pk, ct)
+	ss_d, err := Decapsulate(sk, pk, ct)
 	checkErr(t, err, "decapsulation returns error when invalid ciphertext provided")
 
 	if bytes.Equal(ss_e, ss_d) {
@@ -190,7 +190,7 @@ func TestNegativeKEM(t *testing.T) {
 		t.Error("encapsulation accepts SIDH public key")
 	}
 	// Try decapsulating with SIDH key
-	_, err = Decapsulate(rand.Reader, prSidh, pk, ct)
+	_, err = Decapsulate(prSidh, pk, ct)
 	if err == nil {
 		t.Error("decapsulation accepts SIDH private key key")
 	}
@@ -208,7 +208,7 @@ func TestNegativeKEMSameWrongResult(t *testing.T) {
 
 	// make ciphertext wrong
 	ct[0] ^= ct[0]
-	decSs1, err := Decapsulate(rand.Reader, sk, pk, ct)
+	decSs1, err := Decapsulate(sk, pk, ct)
 	checkErr(t, err, "pre-requisite for a test failed")
 
 	// second decapsulation must be done with same, but imported private key
@@ -221,7 +221,7 @@ func TestNegativeKEMSameWrongResult(t *testing.T) {
 
 	// try decapsulating again. ss2 must be same as ss1 and different than
 	// original plaintext
-	decSs2, err := Decapsulate(rand.Reader, sk, pk, ct)
+	decSs2, err := Decapsulate(sk, pk, ct)
 	checkErr(t, err, "pre-requisite for a test failed")
 
 	if !bytes.Equal(decSs1, decSs2) {
@@ -272,7 +272,7 @@ func testDecapsulation(pk, sk, ct, ssExpected []byte) bool {
 		panic("sike test: can't load KAT")
 	}
 
-	ssGot, err := Decapsulate(rand.Reader, prvKey, pubKey, ct)
+	ssGot, err := Decapsulate(prvKey, pubKey, ct)
 	if err != nil {
 		panic("sike test: can't perform decapsulation KAT")
 	}

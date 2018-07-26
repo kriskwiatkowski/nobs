@@ -1,4 +1,4 @@
-package p751toolbox
+package internal
 
 const (
 	// The secret key size, in bytes. Secret key is actually different for

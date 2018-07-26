@@ -1,4 +1,4 @@
-package p751toolbox
+package internal
 
 // A point on the projective line P^1(F_{p^2}).
 //
