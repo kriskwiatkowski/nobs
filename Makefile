@@ -11,10 +11,10 @@ ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
 endif
 
-TARGETS=\
-	dh\
-	drbg\
-	hash\
+TARGETS= \
+	dh   \
+	drbg \
+	hash \
 	kem
 
 prep-%:
