@@ -173,7 +173,7 @@ func TestNegativeKEM(t *testing.T) {
 	ct, ss_e, err := Encapsulate(rand.Reader, pk)
 	checkErr(t, err, "pre-requisite for a test failed")
 
-	ct[0] ^= ct[0]
+	ct[0] = ct[0] - 1
 	ss_d, err := Decapsulate(sk, pk, ct)
 	checkErr(t, err, "decapsulation returns error when invalid ciphertext provided")
 
@@ -207,7 +207,7 @@ func TestNegativeKEMSameWrongResult(t *testing.T) {
 	checkErr(t, err, "pre-requisite for a test failed")
 
 	// make ciphertext wrong
-	ct[0] ^= ct[0]
+	ct[0] = ct[0] - 1
 	decSs1, err := Decapsulate(sk, pk, ct)
 	checkErr(t, err, "pre-requisite for a test failed")
 
