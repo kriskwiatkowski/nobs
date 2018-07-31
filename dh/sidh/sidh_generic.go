@@ -27,14 +27,14 @@ func subc8(bIn, a, b uint8) (ret, bOut uint8) {
 	return
 }
 
-// Set result to zero if the input scalar is <= 3^238. scalar must be 48-byte array
-// of bytes. This function is specific to P751.
-func checkLessThanThree238(scalar []byte) uint64 {
+// Set result to zero if the input scalar is <= 3^238, otherwise result is 1.
+// Scalar must be array of 48 bytes. This function is specific to P751.
+func checkLessThanThree238(scalar []byte) uint8 {
 	var borrow uint8
 	for i := 0; i < len(three238m1); i++ {
 		_, borrow = subc8(borrow, three238m1[i], scalar[i])
 	}
-	return uint64(borrow)
+	return borrow
 }
 
 // Multiply 48-byte scalar by 3 to get a scalar in 3*[0,3^238). This

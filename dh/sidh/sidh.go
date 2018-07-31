@@ -186,7 +186,7 @@ func (prv *PrivateKey) generatePrivateKeyA(rand io.Reader) error {
 // shared secret computation.
 func (prv *PrivateKey) generatePrivateKeyB(rand io.Reader) error {
 	// Perform rejection sampling to obtain a random value in [0,3^238]:
-	var ok uint64
+	var ok uint8
 	for i := uint(0); i < prv.params.SampleRate; i++ {
 		_, err := io.ReadFull(rand, prv.Scalar)
 		if err != nil {
