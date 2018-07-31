@@ -1,8 +1,32 @@
-test:
-	go test -v ./...
+# I'm sure there is better way. But I would need to find it first
+MK_FILE_PATH = $(lastword $(MAKEFILE_LIST))
+PRJ_DIR      = $(abspath $(dir $(MK_FILE_PATH)))
+GOPATH_LOCAL = $(PRJ_DIR)/build/
+GOPATH_DIR   = src/github.com/henrydcase/nobs
+VENDOR_DIR   = tls_vendor
+OPTS         ?=
 
-vendor-sidh-for-tls:
-	rm -rf tls_vendor
-	mkdir -p tls_vendor/github_com/henrydcase/nobs/
-	rsync -a . tls_vendor/github_com/henrydcase/nobs/ --exclude=tls_vendor --exclude=.git --exclude=.travis.yml --exclude=README.md
-	find tls_vendor -type f -print0 -name "*.go" | xargs -0 sed -i 's/github\.com/github_com/g'
+TARGETS=\
+	dh\
+	drbg\
+	hash\
+	kem
+
+prep-%:
+	mkdir -p $(GOPATH_LOCAL)/$(GOPATH_DIR)
+	cp -rf $* $(GOPATH_LOCAL)/$(GOPATH_DIR)/$*
+
+make_dirs:
+	mkdir -p $(GOPATH_LOCAL)/$(GOPATH_DIR)
+
+test: clean make_dirs $(addprefix prep-,$(TARGETS))
+	GOPATH=$(GOPATH_LOCAL) go test -v ./...
+
+clean:
+	rm -rf $(GOPATH_LOCAL)
+	rm -rf $(VENDOR_DIR)
+
+vendor-sidh-for-tls: clean
+	mkdir -p $(VENDOR_DIR)/github_com/henrydcase/nobs/
+	rsync -a . $(VENDOR_DIR)/github_com/henrydcase/nobs/ --exclude=$(VENDOR_DIR) --exclude=.git --exclude=.travis.yml --exclude=README.md
+	find $(VENDOR_DIR) -type f -print0 -name "*.go" | xargs -0 sed -i 's/github\.com/github_com/g'
