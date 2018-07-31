@@ -2,4 +2,7 @@ sudo: required
 language: go
 
 script:
-  - make test
+  - NOASM=0 make test
+  - NOASM=1 make test
+  - NOASM=0 make cover
+  - NOASM=1 make cover

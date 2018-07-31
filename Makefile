@@ -5,6 +5,11 @@ GOPATH_LOCAL = $(PRJ_DIR)/build/
 GOPATH_DIR   = src/github.com/henrydcase/nobs
 VENDOR_DIR   = tls_vendor
 OPTS         ?=
+NOASM		 ?=
+
+ifeq ($(NOASM),1)
+	OPTS+=$(OPTS_TAGS)
+endif
 
 TARGETS=\
 	dh\
@@ -18,9 +23,15 @@ prep-%:
 
 make_dirs:
 	mkdir -p $(GOPATH_LOCAL)/$(GOPATH_DIR)
+	cp -rf etc $(GOPATH_LOCAL)/$(GOPATH_DIR)
 
 test: clean make_dirs $(addprefix prep-,$(TARGETS))
-	GOPATH=$(GOPATH_LOCAL) go test -v ./...
+	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test $(OPTS) -v ./...
+
+cover:
+	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test \
+		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) -v ./...
+	cat $(GOPATH_LOCAL)/coverage_$(NOASM).txt >> coverage.txt
 
 clean:
 	rm -rf $(GOPATH_LOCAL)
