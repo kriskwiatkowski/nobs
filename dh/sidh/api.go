@@ -167,6 +167,7 @@ func (prv *PrivateKey) Generate(rand io.Reader) error {
 
 // Generates public key corresponding to prv. KeyVariant of generated public key
 // is same as PrivateKey. Fails only if prv was wrongly initialized.
+// Constant time for properly initialzied PrivateKey
 func GeneratePublicKey(prv *PrivateKey) (*PublicKey, error) {
 	if prv == nil {
 		return nil, errors.New("sidh: invalid arguments")
@@ -187,6 +188,7 @@ func GeneratePublicKey(prv *PrivateKey) (*PublicKey, error) {
 // shared secret.
 //
 // Function may return error. This happens only in case provided input is invalid.
+// Constant time for properly initialized private and public key.
 func DeriveSecret(prv *PrivateKey, pub *PublicKey) ([]byte, error) {
 
 	if (pub == nil) || (prv == nil) {

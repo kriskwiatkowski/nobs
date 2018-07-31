@@ -27,7 +27,7 @@ func cshakeSum(out, in, S []byte) {
 }
 
 func encrypt(skA *PrivateKey, pkA, pkB *PublicKey, ptext []byte) ([]byte, error) {
-	var tmp [40]byte
+	var n [40]byte // n can is max 320-bit (see 1.4 of [SIKE])
 	var ptextLen = len(ptext)
 
 	if pkB.Variant() != KeyVariant_SIKE {
@@ -39,14 +39,14 @@ func encrypt(skA *PrivateKey, pkA, pkB *PublicKey, ptext []byte) ([]byte, error)
 		return nil, err
 	}
 
-	cshakeSum(tmp[:ptextLen], j, F)
+	cshakeSum(n[:ptextLen], j, F)
 	for i, _ := range ptext {
-		tmp[i] ^= ptext[i]
+		n[i] ^= ptext[i]
 	}
 
 	ret := make([]byte, pkA.Size()+ptextLen)
 	copy(ret, pkA.Export())
-	copy(ret[pkA.Size():], tmp[:ptextLen])
+	copy(ret[pkA.Size():], n[:ptextLen])
 	return ret, nil
 }
 
@@ -77,9 +77,10 @@ func Encrypt(rng io.Reader, pub *PublicKey, ptext []byte) ([]byte, error) {
 
 // Uses SIKE private key to decrypt ciphertext. Returns plaintext in case
 // decryption succeeds or error in case unexptected input was provided.
+// Constant time
 func Decrypt(prv *PrivateKey, ctext []byte) ([]byte, error) {
 	var params = prv.Params()
-	var tmp [40]byte
+	var n [40]byte // n can is max 320-bit (see 1.4 of [SIKE])
 	var c1_len int
 	var pk_len = params.PublicKeySize
 
@@ -104,12 +105,12 @@ func Decrypt(prv *PrivateKey, ctext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	cshakeSum(tmp[:c1_len], j, F)
-	for i, _ := range tmp[:c1_len] {
-		tmp[i] ^= ctext[pk_len+i]
+	cshakeSum(n[:c1_len], j, F)
+	for i, _ := range n[:c1_len] {
+		n[i] ^= ctext[pk_len+i]
 	}
 
-	return tmp[:c1_len], nil
+	return n[:c1_len], nil
 }
 
 // -----------------------------------------------------------------------------
@@ -169,6 +170,7 @@ func Encapsulate(rng io.Reader, pub *PublicKey) (ctext []byte, secret []byte, er
 // Decapsulate given the keypair and ciphertext as inputs, Decapsulate outputs a shared
 // secret if plaintext verifies correctly, otherwise function outputs random value.
 // Decapsulation may fail in case input is wrongly formated.
+// Constant time for properly initialized input.
 func Decapsulate(prv *PrivateKey, pub *PublicKey, ctext []byte) ([]byte, error) {
 	var params = pub.Params()
 	var r = make([]byte, params.SecretKeySize)
@@ -194,7 +196,8 @@ func Decapsulate(prv *PrivateKey, pub *PublicKey, ctext []byte) ([]byte, error) 
 	// Never fails
 	skA.Import(r)
 
-	pkA, _ := GeneratePublicKey(skA) // Never fails
+	// Never fails
+	pkA, _ := GeneratePublicKey(skA)
 	c0 := pkA.Export()
 
 	h = cshake.NewCShake256(nil, H)
