@@ -14,6 +14,7 @@ endif
 TARGETS= \
 	dh   \
 	drbg \
+	ec \
 	hash \
 	kem
 
