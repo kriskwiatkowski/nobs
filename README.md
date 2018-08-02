@@ -5,6 +5,8 @@ Crypto primitives implementation in Go.
 ## Implemented primitives
 * dh/
     - SIDH
+* ec/
+    - x448
 * hash/
     - cSHAKE (sha3 coppied from "golang.org/x/crypto")
     - SM3
