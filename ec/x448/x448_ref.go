@@ -742,14 +742,14 @@ func (a *gf) canon() {
 }
 
 // deser deserializes into the limb representation.
-func (s *gf) deser(ser *[x448Bytes]byte) {
+func (s *gf) deser(ser *[SharedSecretSize]byte) {
 	var buf uint64
 	bits := uint(0)
 	k := 0
 
 	for i, v := range ser {
 		buf |= (uint64)(v) << bits
-		for bits += 8; (bits >= lBits || i == x448Bytes-1) && k < x448Limbs; bits, buf = bits-lBits, buf>>lBits {
+		for bits += 8; (bits >= lBits || i == SharedSecretSize-1) && k < x448Limbs; bits, buf = bits-lBits, buf>>lBits {
 			s.limb[k] = (uint32)(buf & lMask)
 			k++
 		}
@@ -757,14 +757,14 @@ func (s *gf) deser(ser *[x448Bytes]byte) {
 }
 
 // ser serializes into byte representation.
-func (a *gf) ser(ser *[x448Bytes]byte) {
+func (a *gf) ser(ser *[SharedSecretSize]byte) {
 	a.canon()
 	k := 0
 	bits := uint(0)
 	var buf uint64
 	for i, v := range a.limb {
 		buf |= (uint64)(v) << bits
-		for bits += lBits; (bits >= 8 || i == x448Limbs-1) && k < x448Bytes; bits, buf = bits-8, buf>>8 {
+		for bits += lBits; (bits >= 8 || i == x448Limbs-1) && k < SharedSecretSize; bits, buf = bits-8, buf>>8 {
 			ser[k] = (byte)(buf)
 			k++
 		}

@@ -28,8 +28,8 @@
 package x448
 
 const (
-	x448Bytes = 56
-	edwardsD  = -39081
+	SharedSecretSize = 56
+	edwardsD         = -39081
 )
 
 var basePoint = [56]byte{
@@ -55,7 +55,7 @@ func ScalarMult(out, scalar, base *[56]byte) int {
 		// Scalar conditioning.
 		if t/8 == 0 {
 			sb &= 0xFC
-		} else if t/8 == x448Bytes-1 {
+		} else if t/8 == SharedSecretSize-1 {
 			sb |= 0x80
 		}
 
