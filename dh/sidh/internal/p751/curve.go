@@ -11,8 +11,8 @@ type ProjectiveCurveParameters struct {
 // Stores curve projective parameters equivalent to A/C. Meaning of the
 // values depends on the context. When working with isogenies over
 // subgroup that are powers of:
-// * three then  A=(A+2C)/4; C=(A-2C)/4
-// * four then   A=(A+2C)/4; C=4C
+// * three then  (A:C) ~ (A+2C:A-2C)
+// * four then   (A:C) ~ (A+2C:  4C)
 // See Appendix A of SIKE for more details
 type CurveCoefficientsEquiv struct {
 	A ExtensionFieldElement
@@ -93,26 +93,25 @@ func (curve *ProjectiveCurveParameters) RecoverCoordinateA(xp, xq, xr *Extension
 // Computes equivalence (A:C) ~ (A+2C : A-2C)
 func (curve *ProjectiveCurveParameters) CalcCurveParamsEquiv3() CurveCoefficientsEquiv {
 	var coef CurveCoefficientsEquiv
-	var tmp ExtensionFieldElement
+	var c2 ExtensionFieldElement
 
 	// TODO: Calling code sets C=1, always (all functions). Currently only tests
 	//       require C to be customizable.
 
-	// C24 = 2*C
-	tmp.Add(&curve.C, &curve.C)
-	// A24_plus = A + 2C
-	coef.A.Add(&curve.A, &tmp)
-	// A24_minus = A - 2C
-	coef.C.Sub(&curve.A, &tmp)
+	c2.Add(&curve.C, &curve.C)
+	// A24p = A+2*C
+	coef.A.Add(&curve.A, &c2)
+	// A24m = A-2*C
+	coef.C.Sub(&curve.A, &c2)
 	return coef
 }
 
-// Computes equivalence (A:C) ~ (A+2C : 2C)
+// Computes equivalence (A:C) ~ (A+2C : 4C)
 func (cparams *ProjectiveCurveParameters) CalcCurveParamsEquiv4() CurveCoefficientsEquiv {
 	var coefEq CurveCoefficientsEquiv
-	// C = 2*cparams.C
+
 	coefEq.C.Add(&cparams.C, &cparams.C)
-	// A24_plus = A + 2C
+	// A24p = A + 2C
 	coefEq.A.Add(&cparams.A, &coefEq.C)
 	// C24 = 4*C
 	coefEq.C.Add(&coefEq.C, &coefEq.C)
@@ -136,18 +135,31 @@ func (cparams *ProjectiveCurveParameters) calcAplus2Over4() (ret ExtensionFieldE
 // Recovers (A:C) curve parameters from projectively equivalent (A+2C:A-2C).
 func (cparams *ProjectiveCurveParameters) RecoverCurveCoefficients3(coefEq *CurveCoefficientsEquiv) {
 	cparams.A.Add(&coefEq.A, &coefEq.C)
+	// cparams.A = 2*(A+2C+A-2C) = 4A
 	cparams.A.Add(&cparams.A, &cparams.A)
+	// cparams.C = (A+2C-A+2C) = 4C
 	cparams.C.Sub(&coefEq.A, &coefEq.C)
 	return
 }
 
-// Recovers (A:C) curve parameters from projectively equivalent (A+2C:2C).
+// Recovers (A:C) curve parameters from projectively equivalent (A+2C:4C).
 func (cparams *ProjectiveCurveParameters) RecoverCurveCoefficients4(coefEq *CurveCoefficientsEquiv) {
-	var tmp ExtensionFieldElement
-	tmp.Add(&oneExtensionField, &oneExtensionField).Inv(&tmp)
-	cparams.C.Mul(&coefEq.C, &tmp)
+	// Represents 1/2 in montgomery form
+	var half = ExtensionFieldElement{
+		A: Fp751Element{
+			0x00000000000124D6, 0x0000000000000000, 0x0000000000000000,
+			0x0000000000000000, 0x0000000000000000, 0xB8E0000000000000,
+			0x9C8A2434C0AA7287, 0xA206996CA9A378A3, 0x6876280D41A41B52,
+			0xE903B49F175CE04F, 0x0F8511860666D227, 0x00004EA07CFF6E7F},
+		B: Fp751Element{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	}
+
+	// cparams.C = (4C)*1/2=2C
+	cparams.C.Mul(&coefEq.C, &half)
+	// cparams.A = A+2C - 2C = A
 	cparams.A.Sub(&coefEq.A, &cparams.C)
-	cparams.C.Mul(&cparams.C, &tmp)
+	// cparams.C = 2C * 1/2 = C
+	cparams.C.Mul(&cparams.C, &half)
 	return
 }
 

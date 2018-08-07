@@ -93,6 +93,8 @@ var threePointLadderInputs = []ProjectivePoint{
 	},
 }
 
+// Helpers
+
 func (P ProjectivePoint) Generate(rand *rand.Rand, size int) reflect.Value {
 	f := ExtensionFieldElement{}
 	x, _ := f.Generate(rand, size).Interface().(ExtensionFieldElement)
@@ -111,6 +113,25 @@ func (curve ProjectiveCurveParameters) Generate(rand *rand.Rand, size int) refle
 		A: A,
 		C: C,
 	})
+}
+
+// Sets FP(p^2) from uint64. x sets ExtensionsFieldElement.A (real part) and y
+// ExtensionFieldElement.B (imaginary part).
+//
+// Returns dest to allow chaining operations.
+func (dest *ExtensionFieldElement) SetUint64(x, y uint64) *ExtensionFieldElement {
+	var xRR fp751X2
+	dest.A = Fp751Element{}                 // = 0
+	dest.A[0] = x                           // = x
+	fp751Mul(&xRR, &dest.A, &montgomeryRsq) // = x*R*R
+	fp751MontgomeryReduce(&dest.A, &xRR)    // = x*R mod p
+
+	dest.B = Fp751Element{}                 // = 0
+	dest.B[0] = y                           // = y
+	fp751Mul(&xRR, &dest.B, &montgomeryRsq) // = y*R*R
+	fp751MontgomeryReduce(&dest.B, &xRR)    // = y*R mod p
+
+	return dest
 }
 
 // Helpers
@@ -352,6 +373,36 @@ func TestPointTripleVersusAddDouble(t *testing.T) {
 
 	if err := quick.Check(tripleEqualsAddDouble, quickCheckConfig); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestProjectiveParamsRecovery(t *testing.T) {
+	var crv1, crv2 ProjectiveCurveParameters
+	var A4, C4, four ExtensionFieldElement
+	four.SetUint64(4, 0)
+
+	eqivParams3 := curve.CalcCurveParamsEquiv3()
+	eqivParams4 := curve.CalcCurveParamsEquiv4()
+
+	// This returns 4*A and 4*C
+	crv1.RecoverCurveCoefficients3(&eqivParams3)
+	crv2.RecoverCurveCoefficients4(&eqivParams4)
+
+	A4.Mul(&curve_A, &four)
+	C4.Mul(&curve_C, &four)
+
+	if !crv1.A.VartimeEq(&A4) {
+		t.Error("\nExpected\n", crv1.A, "\nfound\n", A4)
+	}
+	if !crv1.C.VartimeEq(&C4) {
+		t.Error("\nExpected\n", crv1.C, "\nfound\n", C4)
+	}
+
+	if !crv2.A.VartimeEq(&curve_A) {
+		t.Error("\nExpected\n", crv2.A, "\nfound\n", curve_A)
+	}
+	if !crv2.C.VartimeEq(&curve_C) {
+		t.Error("\nExpected\n", crv2.C, "\nfound\n", curve_C)
 	}
 }
 
