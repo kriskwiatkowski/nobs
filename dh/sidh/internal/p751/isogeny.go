@@ -88,7 +88,7 @@ func (phi *isogeny3) EvaluatePoint(p *ProjectivePoint) ProjectivePoint {
 	t2.Square(&t2)   // t2 = t2 ^ 2
 	t0.Square(&t0)   // t0 = t0 ^ 2
 	q.X.Mul(px, &t2) // XQ'= XQ * t2
-	q.Z.Mul(pz, &t0) // XZ'= ZQ * t0
+	q.Z.Mul(pz, &t0) // ZQ'= ZQ * t0
 	return q
 }
 

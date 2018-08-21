@@ -294,7 +294,7 @@ func (x3P *ProjectivePoint) Pow3k(params *CurveCoefficientsEquiv, xP *Projective
 		t1.Sub(&t1, &t2)       // t1  = t1 - t2
 		t5.Mul(&t3, &params.A) // t5  = t3 * A24+
 		t3.Mul(&t3, &t5)       // t3  = t5 * t3
-		t6.Mul(&params.C, &t2) // t6  = t2 * A24-
+		t6.Mul(&t2, &params.C) // t6  = t2 * A24-
 		t2.Mul(&t2, &t6)       // t2  = t2 * t6
 		t3.Sub(&t2, &t3)       // t3  = t2 - t3
 		t2.Sub(&t5, &t6)       // t2  = t5 - t6
