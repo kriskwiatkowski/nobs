@@ -180,12 +180,12 @@ func GeneratePublicKey(prv *PrivateKey) (*PublicKey, error) {
 	}
 }
 
-// Computes a shared secret. Function requires that pub has different KeyVariant than
-// prv.
+// Computes a shared secret which is a j-invariant. Function requires that pub has
+// different KeyVariant than prv. Length of returned output is 2*ceil(log_2 P)/8),
+// where P is a prime defining finite field.
 //
-// Function returns shared secret that can be used as a symmetric key. It's important
-// to notice that each keypair must not be used more than once to calculate
-// shared secret.
+// It's important to notice that each keypair must not be used more than once
+// to calculate shared secret.
 //
 // Function may return error. This happens only in case provided input is invalid.
 // Constant time for properly initialized private and public key.
