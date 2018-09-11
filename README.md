@@ -19,3 +19,6 @@ Crypto primitives implementation in Go.
 ```
 make test
 ```
+
+## Licence
+WTFPL
