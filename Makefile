@@ -29,6 +29,9 @@ make_dirs:
 test: clean make_dirs $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test $(OPTS) -v ./...
 
+build: clean make_dirs $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go build $(OPTS) -v ./...
+
 cover:
 	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test \
 		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) -v ./...
