@@ -21,4 +21,4 @@ make test
 ```
 
 ## Licence
-WTFPL
+WTFPL except if specified differently in subfolders
