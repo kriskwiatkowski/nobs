@@ -1,11 +1,16 @@
 # I'm sure there is better way. But I would need to find it first
 MK_FILE_PATH = $(lastword $(MAKEFILE_LIST))
 PRJ_DIR      = $(abspath $(dir $(MK_FILE_PATH)))
+GO           ?= go
 GOPATH_LOCAL = $(PRJ_DIR)/build/
 GOPATH_DIR   = src/github.com/henrydcase/nobs
 VENDOR_DIR   = tls_vendor
 OPTS         ?=
-NOASM		 ?=
+NOASM        ?=
+TEST_PATH    ?= ./...
+GOCACHE      ?= off
+BENCH_OPTS   ?= -v -bench=. -run="NonExistingTest"
+
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
@@ -33,6 +38,10 @@ cover:
 	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test \
 		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) -v ./...
 	cat $(GOPATH_LOCAL)/coverage_$(NOASM).txt >> coverage.txt
+
+bench: clean $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
+		$(BENCH_OPTS) ./...
 
 clean:
 	rm -rf $(GOPATH_LOCAL)
