@@ -90,31 +90,42 @@ TEXT ·fp503ConditionalSwap(SB),NOSPLIT,$0-17
 
 	MOVQ	x+0(FP), REG_P1
 	MOVQ	y+8(FP), REG_P2
-	MOVB	choice+16(FP), AL	// AL = 0 or 1
-	MOVBLZX	AL, AX				// AX = 0 or 1
-	NEGQ	AX					// RAX = 0x00..00 or 0xff..ff
+	MOVBLZX	choice+16(FP), AX	// AL = 0 or 1
+
+	// Make AX, so that either all bits are set or non
+	// AX = 0 or 1
+	NEGQ	AX
+
+	// Fill xmm15. After this step first half of XMM15 is
+	// just zeros and second half is whatever in AX
+	MOVQ    AX, X15
+
+	// Copy lower double word everywhere else. So that
+	// XMM15=AL|AL|AL|AL. As AX has either all bits set
+	// or non result will be that XMM15 has also either
+	// all bits set or non of them.
+	PSHUFD $0, X15, X15
 
 #ifndef CSWAP_BLOCK
 #define CSWAP_BLOCK(idx) 	\
-	MOVQ	(idx*8)(REG_P1), BX	\ // BX = x[idx]
-	MOVQ 	(idx*8)(REG_P2), CX	\ // CX = y[idx]
-	MOVQ	CX, DX				\ // DX = y[idx]
-	XORQ	BX, DX				\ // DX = y[idx] ^ x[idx]
-	ANDQ	AX, DX				\ // DX = (y[idx] ^ x[idx]) & mask
-	XORQ	DX, BX				\ // BX = (y[idx] ^ x[idx]) & mask) ^ x[idx] = x[idx] or y[idx]
-	XORQ	DX, CX				\ // CX = (y[idx] ^ x[idx]) & mask) ^ y[idx] = y[idx] or x[idx]
-	MOVQ	BX, (idx*8)(REG_P1)	\
-	MOVQ	CX, (idx*8)(REG_P2)
+	MOVOU	(idx*16)(REG_P1), X0 \
+	MOVOU 	(idx*16)(REG_P2), X1 \
+	\ // X2 = mask & (X0 ^ X1)
+	MOVO	X1, X2 \
+	PXOR	X0, X2 \
+	PAND	X15, X2 \
+	\
+	PXOR	X2, X0 \
+	PXOR	X2, X1 \
+	\
+	MOVOU	X0, (idx*16)(REG_P1) \
+	MOVOU	X1, (idx*16)(REG_P2)
 #endif
 
 	CSWAP_BLOCK(0)
 	CSWAP_BLOCK(1)
 	CSWAP_BLOCK(2)
 	CSWAP_BLOCK(3)
-	CSWAP_BLOCK(4)
-	CSWAP_BLOCK(5)
-	CSWAP_BLOCK(6)
-	CSWAP_BLOCK(7)
 
 #ifdef CSWAP_BLOCK
 #undef CSWAP_BLOCK
