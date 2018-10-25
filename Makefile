@@ -10,10 +10,14 @@ NOASM        ?=
 TEST_PATH    ?= ./...
 GOCACHE      ?= off
 BENCH_OPTS   ?= -v -bench=. -run="NonExistingTest"
-TEST_PATH 	?= ./...
+TEST_PATH    ?= ./...
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
+endif
+
+ifeq ($(PPROF),1)
+	BENCH_OPTS+= -cpuprofile=cpu.out -memprofile=mem0.out
 endif
 
 TARGETS= \
@@ -41,7 +45,7 @@ cover:
 
 bench: clean $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
-		$(BENCH_OPTS) ./...
+		$(BENCH_OPTS) $(TEST_PATH)
 
 clean:
 	rm -rf $(GOPATH_LOCAL)
@@ -51,3 +55,9 @@ vendor-sidh-for-tls: clean
 	mkdir -p $(VENDOR_DIR)/github_com/henrydcase/nobs/
 	rsync -a . $(VENDOR_DIR)/github_com/henrydcase/nobs/ --exclude=$(VENDOR_DIR) --exclude=.git --exclude=.travis.yml --exclude=README.md
 	find $(VENDOR_DIR) -type f -print0 -name "*.go" | xargs -0 sed -i 's/github\.com/github_com/g'
+
+pprof-cpu:
+	$(GO) tool pprof $(GOPATH_LOCAL)/cpu.out
+
+pprof-mem:
+	$(GO) tool pprof $(GOPATH_LOCAL)/mem0.out
