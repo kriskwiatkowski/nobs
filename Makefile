@@ -10,7 +10,7 @@ NOASM        ?=
 TEST_PATH    ?= ./...
 GOCACHE      ?= off
 BENCH_OPTS   ?= -v -bench=. -run="NonExistingTest"
-
+TEST_PATH 	?= ./...
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
@@ -32,11 +32,11 @@ make_dirs:
 	cp -rf etc $(GOPATH_LOCAL)/$(GOPATH_DIR)
 
 test: clean make_dirs $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test $(OPTS) -v ./...
+	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test $(OPTS) -v $(TEST_PATH)
 
 cover:
 	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test \
-		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) -v ./...
+		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) -v $(TEST_PATH)
 	cat $(GOPATH_LOCAL)/coverage_$(NOASM).txt >> coverage.txt
 
 bench: clean $(addprefix prep-,$(TARGETS))
