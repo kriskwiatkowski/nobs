@@ -54,14 +54,14 @@ TEXT ·fp503StrongReduce(SB), NOSPLIT, $0-8
 	MOVQ	P503_7, R13
 
 	// Set x <- x - p
-	SUBQ	R8,  ( 0)(REG_P1)
-	SBBQ	R8,  ( 8)(REG_P1)
-	SBBQ	R8,  (16)(REG_P1)
-	SBBQ	R9,  (24)(REG_P1)
-	SBBQ	R10, (32)(REG_P1)
-	SBBQ	R11, (40)(REG_P1)
-	SBBQ	R12, (48)(REG_P1)
-	SBBQ	R13, (56)(REG_P1)
+	MOVQ    ( 0)(REG_P1), CX;  SUBQ  R8, CX;   MOVQ CX, ( 0)(REG_P1)
+    MOVQ    ( 8)(REG_P1), CX;  SBBQ  R8, CX;   MOVQ CX, ( 8)(REG_P1)
+    MOVQ    (16)(REG_P1), CX;  SBBQ  R8, CX;   MOVQ CX, (16)(REG_P1)
+    MOVQ    (24)(REG_P1), CX;  SBBQ  R9, CX;   MOVQ CX, (24)(REG_P1)
+    MOVQ    (32)(REG_P1), CX;  SBBQ R10, CX;   MOVQ CX, (32)(REG_P1)
+    MOVQ    (40)(REG_P1), CX;  SBBQ R11, CX;   MOVQ CX, (40)(REG_P1)
+    MOVQ    (48)(REG_P1), CX;  SBBQ R12, CX;   MOVQ CX, (48)(REG_P1)
+    MOVQ    (56)(REG_P1), CX;  SBBQ R13, CX;   MOVQ CX, (56)(REG_P1)
 
 	// Save carry flag indicating x-p < 0 as a mask
 	SBBQ	$0, AX
@@ -74,14 +74,14 @@ TEXT ·fp503StrongReduce(SB), NOSPLIT, $0-8
 	ANDQ	AX, R12
 	ANDQ	AX, R13
 
-	ADDQ	R8, ( 0)(REG_P1)
-	ADCQ	R8, ( 8)(REG_P1)
-	ADCQ	R8, (16)(REG_P1)
-	ADCQ	R9, (24)(REG_P1)
-	ADCQ	R10,(32)(REG_P1)
-	ADCQ	R11,(40)(REG_P1)
-	ADCQ	R12,(48)(REG_P1)
-	ADCQ	R13,(56)(REG_P1)
+    MOVQ    ( 0)(REG_P1), CX;   ADDQ  R8,  CX;   MOVQ CX, ( 0)(REG_P1)
+    MOVQ    ( 8)(REG_P1), CX;   ADCQ  R8,  CX;   MOVQ CX, ( 8)(REG_P1)
+    MOVQ    (16)(REG_P1), CX;   ADCQ  R8,  CX;   MOVQ CX, (16)(REG_P1)
+    MOVQ    (24)(REG_P1), CX;   ADCQ  R9,  CX;   MOVQ CX, (24)(REG_P1)
+    MOVQ    (32)(REG_P1), CX;   ADCQ  R10, CX;   MOVQ CX, (32)(REG_P1)
+    MOVQ    (40)(REG_P1), CX;   ADCQ  R11, CX;   MOVQ CX, (40)(REG_P1)
+    MOVQ    (48)(REG_P1), CX;   ADCQ  R12, CX;   MOVQ CX, (48)(REG_P1)
+    MOVQ    (56)(REG_P1), CX;   ADCQ  R13, CX;   MOVQ CX, (56)(REG_P1)
 
 	RET
 
