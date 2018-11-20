@@ -55,13 +55,13 @@ TEXT ·fp503StrongReduce(SB), NOSPLIT, $0-8
 
 	// Set x <- x - p
 	MOVQ    ( 0)(REG_P1), CX;  SUBQ  R8, CX;   MOVQ CX, ( 0)(REG_P1)
-    MOVQ    ( 8)(REG_P1), CX;  SBBQ  R8, CX;   MOVQ CX, ( 8)(REG_P1)
-    MOVQ    (16)(REG_P1), CX;  SBBQ  R8, CX;   MOVQ CX, (16)(REG_P1)
-    MOVQ    (24)(REG_P1), CX;  SBBQ  R9, CX;   MOVQ CX, (24)(REG_P1)
-    MOVQ    (32)(REG_P1), CX;  SBBQ R10, CX;   MOVQ CX, (32)(REG_P1)
-    MOVQ    (40)(REG_P1), CX;  SBBQ R11, CX;   MOVQ CX, (40)(REG_P1)
-    MOVQ    (48)(REG_P1), CX;  SBBQ R12, CX;   MOVQ CX, (48)(REG_P1)
-    MOVQ    (56)(REG_P1), CX;  SBBQ R13, CX;   MOVQ CX, (56)(REG_P1)
+	MOVQ    ( 8)(REG_P1), CX;  SBBQ  R8, CX;   MOVQ CX, ( 8)(REG_P1)
+	MOVQ    (16)(REG_P1), CX;  SBBQ  R8, CX;   MOVQ CX, (16)(REG_P1)
+	MOVQ    (24)(REG_P1), CX;  SBBQ  R9, CX;   MOVQ CX, (24)(REG_P1)
+	MOVQ    (32)(REG_P1), CX;  SBBQ R10, CX;   MOVQ CX, (32)(REG_P1)
+	MOVQ    (40)(REG_P1), CX;  SBBQ R11, CX;   MOVQ CX, (40)(REG_P1)
+	MOVQ    (48)(REG_P1), CX;  SBBQ R12, CX;   MOVQ CX, (48)(REG_P1)
+	MOVQ    (56)(REG_P1), CX;  SBBQ R13, CX;   MOVQ CX, (56)(REG_P1)
 
 	// Save carry flag indicating x-p < 0 as a mask
 	SBBQ	$0, AX
@@ -74,14 +74,14 @@ TEXT ·fp503StrongReduce(SB), NOSPLIT, $0-8
 	ANDQ	AX, R12
 	ANDQ	AX, R13
 
-    MOVQ    ( 0)(REG_P1), CX;   ADDQ  R8,  CX;   MOVQ CX, ( 0)(REG_P1)
-    MOVQ    ( 8)(REG_P1), CX;   ADCQ  R8,  CX;   MOVQ CX, ( 8)(REG_P1)
-    MOVQ    (16)(REG_P1), CX;   ADCQ  R8,  CX;   MOVQ CX, (16)(REG_P1)
-    MOVQ    (24)(REG_P1), CX;   ADCQ  R9,  CX;   MOVQ CX, (24)(REG_P1)
-    MOVQ    (32)(REG_P1), CX;   ADCQ  R10, CX;   MOVQ CX, (32)(REG_P1)
-    MOVQ    (40)(REG_P1), CX;   ADCQ  R11, CX;   MOVQ CX, (40)(REG_P1)
-    MOVQ    (48)(REG_P1), CX;   ADCQ  R12, CX;   MOVQ CX, (48)(REG_P1)
-    MOVQ    (56)(REG_P1), CX;   ADCQ  R13, CX;   MOVQ CX, (56)(REG_P1)
+	MOVQ    ( 0)(REG_P1), CX;   ADDQ  R8,  CX;   MOVQ CX, ( 0)(REG_P1)
+	MOVQ    ( 8)(REG_P1), CX;   ADCQ  R8,  CX;   MOVQ CX, ( 8)(REG_P1)
+	MOVQ    (16)(REG_P1), CX;   ADCQ  R8,  CX;   MOVQ CX, (16)(REG_P1)
+	MOVQ    (24)(REG_P1), CX;   ADCQ  R9,  CX;   MOVQ CX, (24)(REG_P1)
+	MOVQ    (32)(REG_P1), CX;   ADCQ  R10, CX;   MOVQ CX, (32)(REG_P1)
+	MOVQ    (40)(REG_P1), CX;   ADCQ  R11, CX;   MOVQ CX, (40)(REG_P1)
+	MOVQ    (48)(REG_P1), CX;   ADCQ  R12, CX;   MOVQ CX, (48)(REG_P1)
+	MOVQ    (56)(REG_P1), CX;   ADCQ  R13, CX;   MOVQ CX, (56)(REG_P1)
 
 	RET
 
@@ -139,145 +139,100 @@ TEXT ·fp503AddReduced(SB),NOSPLIT,$0-24
 	MOVQ	x+8(FP), REG_P1
 	MOVQ	y+16(FP), REG_P2
 
-    // Used later to calculate a mask
-    XORQ    CX, CX
+	// [R8-R15]: z = x + y
+	MOVQ ( 0)(REG_P1),  R8; ADDQ ( 0)(REG_P2),  R8; MOVQ  R8, ( 0)(REG_P3)
+	MOVQ ( 8)(REG_P1),  R9; ADCQ ( 8)(REG_P2),  R9; MOVQ  R9, ( 8)(REG_P3)
+	MOVQ (16)(REG_P1), R10; ADCQ (16)(REG_P2), R10; MOVQ R10, (16)(REG_P3)
+	MOVQ (24)(REG_P1), R11; ADCQ (24)(REG_P2), R11; MOVQ R11, (24)(REG_P3)
+	MOVQ (32)(REG_P1), R12; ADCQ (32)(REG_P2), R12; MOVQ R12, (32)(REG_P3)
+	MOVQ (40)(REG_P1), R13; ADCQ (40)(REG_P2), R13; MOVQ R13, (40)(REG_P3)
+	MOVQ (48)(REG_P1), R14; ADCQ (48)(REG_P2), R14; MOVQ R14, (48)(REG_P3)
+	MOVQ (56)(REG_P1), R15; ADCQ (56)(REG_P2), R15; MOVQ R15, (56)(REG_P3)
 
-    // [R8-R15]: z = x + y
-	MOVQ	( 0)(REG_P1), R8
-	MOVQ	( 8)(REG_P1), R9
-	MOVQ	(16)(REG_P1), R10
-	MOVQ	(24)(REG_P1), R11
-	MOVQ	(32)(REG_P1), R12
-	MOVQ	(40)(REG_P1), R13
-	MOVQ	(48)(REG_P1), R14
-	MOVQ	(56)(REG_P1), R15
-	ADDQ	( 0)(REG_P2), R8
-	ADCQ	( 8)(REG_P2), R9
-	ADCQ	(16)(REG_P2), R10
-	ADCQ	(24)(REG_P2), R11
-	ADCQ	(32)(REG_P2), R12
-	ADCQ	(40)(REG_P2), R13
-	ADCQ	(48)(REG_P2), R14
-	ADCQ	(56)(REG_P2), R15
+	MOVQ	·p503x2+ 0(SB), AX; SUBQ     AX,  R8
+	MOVQ	·p503x2+ 8(SB), AX; SBBQ     AX,  R9
+	MOVQ	·p503x2+16(SB), AX; SBBQ     AX, R10
+	MOVQ	·p503x2+24(SB), AX; SBBQ     AX, R11
+	MOVQ	·p503x2+32(SB), AX; SBBQ     AX, R12
+	MOVQ	·p503x2+40(SB), AX; SBBQ     AX, R13
+	MOVQ	·p503x2+48(SB), AX; SBBQ     AX, R14
+	MOVQ	·p503x2+56(SB), AX; SBBQ     AX, R15
 
-    MOVQ    P503X2_0, AX
-    SUBQ    AX, R8
-    MOVQ    P503X2_1, AX
-    SBBQ    AX, R9
-    SBBQ    AX, R10
-    MOVQ    P503X2_3, AX
-    SBBQ    AX, R11
-    MOVQ    P503X2_4, AX
-    SBBQ    AX, R12
-    MOVQ    P503X2_5, AX
-    SBBQ    AX, R13
-    MOVQ    P503X2_6, AX
-    SBBQ    AX, R14
-    MOVQ    P503X2_7, AX
-    SBBQ    AX, R15
-
-    SBBQ    $0, CX             // mask
-
-                               // move z to REG_P3
-    MOVQ    R8,  ( 0)(REG_P3)
-    MOVQ    R9,  ( 8)(REG_P3)
-    MOVQ    R10, (16)(REG_P3)
-    MOVQ    R11, (24)(REG_P3)
-    MOVQ    R12, (32)(REG_P3)
-    MOVQ    R13, (40)(REG_P3)
-    MOVQ    R14, (48)(REG_P3)
-    MOVQ    R15, (56)(REG_P3)
-
-                                   // if z<0 add p503x2 back
-    MOVQ    P503X2_0,   R8
-    MOVQ    P503X2_1,   R9
-    MOVQ    P503X2_3,   R10
-    MOVQ    P503X2_4,   R11
-    MOVQ    P503X2_5,   R12
-    MOVQ    P503X2_6,   R13
-    MOVQ    P503X2_7,   R14
-    ANDQ    CX, R8
-    ANDQ    CX, R9
-    ANDQ    CX, R10
-    ANDQ    CX, R11
-    ANDQ    CX, R12
-    ANDQ    CX, R13
-    ANDQ    CX, R14
-    ADDQ    R8, ( 0)(REG_P3)
-    ADCQ    R9, ( 8)(REG_P3)
-    ADCQ    R9, (16)(REG_P3)
-    ADCQ    R10,(24)(REG_P3)
-    ADCQ    R11,(32)(REG_P3)
-    ADCQ    R12,(40)(REG_P3)
-    ADCQ    R13,(48)(REG_P3)
-    ADCQ    R14,(56)(REG_P3)
+	MOVQ ( 0)(REG_P3), AX; CMOVQCC  R8, AX; MOVQ AX, ( 0)(REG_P3)
+	MOVQ ( 8)(REG_P3), AX; CMOVQCC  R9, AX; MOVQ AX, ( 8)(REG_P3)
+	MOVQ (16)(REG_P3), AX; CMOVQCC R10, AX; MOVQ AX, (16)(REG_P3)
+	MOVQ (24)(REG_P3), AX; CMOVQCC R11, AX; MOVQ AX, (24)(REG_P3)
+	MOVQ (32)(REG_P3), AX; CMOVQCC R12, AX; MOVQ AX, (32)(REG_P3)
+	MOVQ (40)(REG_P3), AX; CMOVQCC R13, AX; MOVQ AX, (40)(REG_P3)
+	MOVQ (48)(REG_P3), AX; CMOVQCC R14, AX; MOVQ AX, (48)(REG_P3)
+	MOVQ (56)(REG_P3), AX; CMOVQCC R15, AX; MOVQ AX, (56)(REG_P3)
 
 	RET
 
 TEXT ·fp503SubReduced(SB), NOSPLIT, $0-24
 
-    MOVQ    z+0(FP), REG_P3
-    MOVQ    x+8(FP), REG_P1
-    MOVQ    y+16(FP), REG_P2
+	MOVQ    z+0(FP), REG_P3
+	MOVQ    x+8(FP), REG_P1
+	MOVQ    y+16(FP), REG_P2
 
-    // Used later to calculate a mask
-    XORQ    CX, CX
+	// Used later to calculate a mask
+	XORQ    CX, CX
 
-    MOVQ    ( 0)(REG_P1), R8
-    MOVQ    ( 8)(REG_P1), R9
-    MOVQ    (16)(REG_P1), R10
-    MOVQ    (24)(REG_P1), R11
-    MOVQ    (32)(REG_P1), R12
-    MOVQ    (40)(REG_P1), R13
-    MOVQ    (48)(REG_P1), R14
-    MOVQ    (56)(REG_P1), R15
+	MOVQ    ( 0)(REG_P1), R8
+	MOVQ    ( 8)(REG_P1), R9
+	MOVQ    (16)(REG_P1), R10
+	MOVQ    (24)(REG_P1), R11
+	MOVQ    (32)(REG_P1), R12
+	MOVQ    (40)(REG_P1), R13
+	MOVQ    (48)(REG_P1), R14
+	MOVQ    (56)(REG_P1), R15
 
-    SUBQ    ( 0)(REG_P2), R8
-    SBBQ    ( 8)(REG_P2), R9
-    SBBQ    (16)(REG_P2), R10
-    SBBQ    (24)(REG_P2), R11
-    SBBQ    (32)(REG_P2), R12
-    SBBQ    (40)(REG_P2), R13
-    SBBQ    (48)(REG_P2), R14
-    SBBQ    (56)(REG_P2), R15
+	SUBQ    ( 0)(REG_P2), R8
+	SBBQ    ( 8)(REG_P2), R9
+	SBBQ    (16)(REG_P2), R10
+	SBBQ    (24)(REG_P2), R11
+	SBBQ    (32)(REG_P2), R12
+	SBBQ    (40)(REG_P2), R13
+	SBBQ    (48)(REG_P2), R14
+	SBBQ    (56)(REG_P2), R15
 
-    // mask
-    SBBQ    $0, CX
+	// mask
+	SBBQ    $0, CX
 
-    // store x-y in REG_P3
-    MOVQ    R8,  ( 0)(REG_P3)
-    MOVQ    R9,  ( 8)(REG_P3)
-    MOVQ    R10, (16)(REG_P3)
-    MOVQ    R11, (24)(REG_P3)
-    MOVQ    R12, (32)(REG_P3)
-    MOVQ    R13, (40)(REG_P3)
-    MOVQ    R14, (48)(REG_P3)
-    MOVQ    R15, (56)(REG_P3)
+	// store x-y in REG_P3
+	MOVQ    R8,  ( 0)(REG_P3)
+	MOVQ    R9,  ( 8)(REG_P3)
+	MOVQ    R10, (16)(REG_P3)
+	MOVQ    R11, (24)(REG_P3)
+	MOVQ    R12, (32)(REG_P3)
+	MOVQ    R13, (40)(REG_P3)
+	MOVQ    R14, (48)(REG_P3)
+	MOVQ    R15, (56)(REG_P3)
 
-    // if z<0 add p503x2 back
-    MOVQ    P503X2_0,   R8
-    MOVQ    P503X2_1,   R9
-    MOVQ    P503X2_3,   R10
-    MOVQ    P503X2_4,   R11
-    MOVQ    P503X2_5,   R12
-    MOVQ    P503X2_6,   R13
-    MOVQ    P503X2_7,   R14
-    ANDQ    CX, R8
-    ANDQ    CX, R9
-    ANDQ    CX, R10
-    ANDQ    CX, R11
-    ANDQ    CX, R12
-    ANDQ    CX, R13
-    ANDQ    CX, R14
+	// if z<0 add p503x2 back
+	MOVQ    P503X2_0,   R8
+	MOVQ    P503X2_1,   R9
+	MOVQ    P503X2_3,   R10
+	MOVQ    P503X2_4,   R11
+	MOVQ    P503X2_5,   R12
+	MOVQ    P503X2_6,   R13
+	MOVQ    P503X2_7,   R14
+	ANDQ    CX, R8
+	ANDQ    CX, R9
+	ANDQ    CX, R10
+	ANDQ    CX, R11
+	ANDQ    CX, R12
+	ANDQ    CX, R13
+	ANDQ    CX, R14
 
-    ADDQ    R8, ( 0)(REG_P3)
-    ADCQ    R9, ( 8)(REG_P3)
-    ADCQ    R9, (16)(REG_P3)
-    ADCQ    R10,(24)(REG_P3)
-    ADCQ    R11,(32)(REG_P3)
-    ADCQ    R12,(40)(REG_P3)
-    ADCQ    R13,(48)(REG_P3)
-    ADCQ    R14,(56)(REG_P3)
+	ADDQ    R8, ( 0)(REG_P3)
+	ADCQ    R9, ( 8)(REG_P3)
+	ADCQ    R9, (16)(REG_P3)
+	ADCQ    R10,(24)(REG_P3)
+	ADCQ    R11,(32)(REG_P3)
+	ADCQ    R12,(40)(REG_P3)
+	ADCQ    R13,(48)(REG_P3)
+	ADCQ    R14,(56)(REG_P3)
 
 	RET
 
@@ -332,124 +287,124 @@ TEXT ·fp503Mul(SB), $96-24
 	// (SP[0-3],R8,R9,R10,R11) <- (AH+AL)*(BH+BL).
 	// MUL using comba; In comments below U=AH+AL V=BH+BL
 
-    // U0*V0
-    MOVQ    (CX), AX
-    MULQ    R12
-    MOVQ    AX, (SP)        // C0
-    MOVQ    DX, R8
+	// U0*V0
+	MOVQ    (CX), AX
+	MULQ    R12
+	MOVQ    AX, (SP)        // C0
+	MOVQ    DX, R8
 
-    // U0*V1
-    XORQ    R9, R9
-    MOVQ    (CX), AX
-    MULQ    R13
-    ADDQ    AX, R8
-    ADCQ    DX, R9
+	// U0*V1
+	XORQ    R9, R9
+	MOVQ    (CX), AX
+	MULQ    R13
+	ADDQ    AX, R8
+	ADCQ    DX, R9
 
-    // U1*V0
-    XORQ    R10, R10
-    MOVQ    (8)(CX), AX
-    MULQ    R12
-    ADDQ    AX, R8
-    MOVQ    R8, (8)(SP)     // C1
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	// U1*V0
+	XORQ    R10, R10
+	MOVQ    (8)(CX), AX
+	MULQ    R12
+	ADDQ    AX, R8
+	MOVQ    R8, (8)(SP)     // C1
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    // U0*V2
-    XORQ    R8, R8
-    MOVQ    (CX), AX
-    MULQ    R14
-    ADDQ    AX, R9
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	// U0*V2
+	XORQ    R8, R8
+	MOVQ    (CX), AX
+	MULQ    R14
+	ADDQ    AX, R9
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    // U2*V0
-    MOVQ    (16)(CX), AX
-    MULQ    R12
-    ADDQ    AX, R9
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	// U2*V0
+	MOVQ    (16)(CX), AX
+	MULQ    R12
+	ADDQ    AX, R9
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    // U1*V1
-    MOVQ    (8)(CX), AX
-    MULQ    R13
-    ADDQ    AX, R9
-    MOVQ    R9, (16)(SP)        // C2
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	// U1*V1
+	MOVQ    (8)(CX), AX
+	MULQ    R13
+	ADDQ    AX, R9
+	MOVQ    R9, (16)(SP)        // C2
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    // U0*V3
-    XORQ    R9, R9
-    MOVQ    (CX), AX
-    MULQ    R15
-    ADDQ    AX, R10
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	// U0*V3
+	XORQ    R9, R9
+	MOVQ    (CX), AX
+	MULQ    R15
+	ADDQ    AX, R10
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    // U3*V0
-    MOVQ    (24)(CX), AX
-    MULQ    R12
-    ADDQ    AX, R10
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	// U3*V0
+	MOVQ    (24)(CX), AX
+	MULQ    R12
+	ADDQ    AX, R10
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    // U1*V2
-    MOVQ    (8)(CX), AX
-    MULQ    R14
-    ADDQ    AX, R10
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	// U1*V2
+	MOVQ    (8)(CX), AX
+	MULQ    R14
+	ADDQ    AX, R10
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    // U2*V1
-    MOVQ    (16)(CX), AX
-    MULQ    R13
-    ADDQ    AX, R10
-    MOVQ    R10, (24)(SP)       // C3
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	// U2*V1
+	MOVQ    (16)(CX), AX
+	MULQ    R13
+	ADDQ    AX, R10
+	MOVQ    R10, (24)(SP)       // C3
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    // U1*V3
-    XORQ    R10, R10
-    MOVQ    (8)(CX), AX
-    MULQ    R15
-    ADDQ    AX, R8
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	// U1*V3
+	XORQ    R10, R10
+	MOVQ    (8)(CX), AX
+	MULQ    R15
+	ADDQ    AX, R8
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    // U3*V1
-    MOVQ    (24)(CX), AX
-    MULQ    R13
-    ADDQ    AX, R8
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	// U3*V1
+	MOVQ    (24)(CX), AX
+	MULQ    R13
+	ADDQ    AX, R8
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    // U2*V2
-    MOVQ    (16)(CX), AX
-    MULQ    R14
-    ADDQ    AX, R8
-    MOVQ    R8, (32)(SP)        // C4
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	// U2*V2
+	MOVQ    (16)(CX), AX
+	MULQ    R14
+	ADDQ    AX, R8
+	MOVQ    R8, (32)(SP)        // C4
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    // U2*V3
-    XORQ    R11, R11
-    MOVQ    (16)(CX), AX
-    MULQ    R15
-    ADDQ    AX, R9
-    ADCQ    DX, R10
-    ADCQ    $0, R11
+	// U2*V3
+	XORQ    R11, R11
+	MOVQ    (16)(CX), AX
+	MULQ    R15
+	ADDQ    AX, R9
+	ADCQ    DX, R10
+	ADCQ    $0, R11
 
-    // U3*V2
-    MOVQ    (24)(CX), AX
-    MULQ    R14
-    ADDQ    AX, R9              // C5
-    ADCQ    DX, R10
-    ADCQ    $0, R11
+	// U3*V2
+	MOVQ    (24)(CX), AX
+	MULQ    R14
+	ADDQ    AX, R9              // C5
+	ADCQ    DX, R10
+	ADCQ    $0, R11
 
-    // U3*V3
-    MOVQ    (24)(CX), AX
-    MULQ    R15
-    ADDQ    AX, R10             // C6
-    ADCQ    DX, R11             // C7
+	// U3*V3
+	MOVQ    (24)(CX), AX
+	MULQ    R15
+	ADDQ    AX, R10             // C6
+	ADCQ    DX, R11             // C7
 
 
 	MOVQ    (64)(SP), AX
@@ -483,244 +438,244 @@ TEXT ·fp503Mul(SB), $96-24
 
 	// CX[0-7] <- AL*BL
 
-    // U0*V0
-    MOVQ    (REG_P1), R11
-    MOVQ    (REG_P2), AX
-    MULQ    R11
-    XORQ    R9, R9
-    MOVQ    AX, (CX)            // C0
-    MOVQ    DX, R8
+	// U0*V0
+	MOVQ    (REG_P1), R11
+	MOVQ    (REG_P2), AX
+	MULQ    R11
+	XORQ    R9, R9
+	MOVQ    AX, (CX)            // C0
+	MOVQ    DX, R8
 
-    // U0*V1
-    MOVQ    (16)(REG_P1), R14
-    MOVQ    (8)(REG_P2), AX
-    MULQ    R11
-    XORQ    R10, R10
-    ADDQ    AX, R8
-    ADCQ    DX, R9
+	// U0*V1
+	MOVQ    (16)(REG_P1), R14
+	MOVQ    (8)(REG_P2), AX
+	MULQ    R11
+	XORQ    R10, R10
+	ADDQ    AX, R8
+	ADCQ    DX, R9
 
-    // U1*V0
-    MOVQ    (8)(REG_P1), R12
-    MOVQ    (REG_P2), AX
-    MULQ    R12
-    ADDQ    AX, R8
-    MOVQ    R8, (8)(CX)         // C1
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	// U1*V0
+	MOVQ    (8)(REG_P1), R12
+	MOVQ    (REG_P2), AX
+	MULQ    R12
+	ADDQ    AX, R8
+	MOVQ    R8, (8)(CX)         // C1
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    // U0*V2
-    XORQ    R8, R8
-    MOVQ    (16)(REG_P2), AX
-    MULQ    R11
-    ADDQ    AX, R9
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	// U0*V2
+	XORQ    R8, R8
+	MOVQ    (16)(REG_P2), AX
+	MULQ    R11
+	ADDQ    AX, R9
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    // U2*V0
-    MOVQ    (REG_P2), R13
-    MOVQ    R14, AX
-    MULQ    R13
-    ADDQ    AX, R9
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	// U2*V0
+	MOVQ    (REG_P2), R13
+	MOVQ    R14, AX
+	MULQ    R13
+	ADDQ    AX, R9
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    // U1*V1
-    MOVQ    (8)(REG_P2), AX
-    MULQ    R12
-    ADDQ    AX, R9
-    MOVQ    R9, (16)(CX)        // C2
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	// U1*V1
+	MOVQ    (8)(REG_P2), AX
+	MULQ    R12
+	ADDQ    AX, R9
+	MOVQ    R9, (16)(CX)        // C2
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    // U0*V3
-    XORQ    R9, R9
-    MOVQ    (24)(REG_P2), AX
-    MULQ    R11
-    MOVQ    (24)(REG_P1), R15
-    ADDQ    AX, R10
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	// U0*V3
+	XORQ    R9, R9
+	MOVQ    (24)(REG_P2), AX
+	MULQ    R11
+	MOVQ    (24)(REG_P1), R15
+	ADDQ    AX, R10
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    // U3*V1
-    MOVQ    R15, AX
-    MULQ    R13
-    ADDQ    AX, R10
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	// U3*V1
+	MOVQ    R15, AX
+	MULQ    R13
+	ADDQ    AX, R10
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    // U2*V2
-    MOVQ    (16)(REG_P2), AX
-    MULQ    R12
-    ADDQ    AX, R10
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	// U2*V2
+	MOVQ    (16)(REG_P2), AX
+	MULQ    R12
+	ADDQ    AX, R10
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    // U2*V3
-    MOVQ    (8)(REG_P2), AX
-    MULQ    R14
-    ADDQ    AX, R10
-    MOVQ    R10, (24)(CX)       // C3
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	// U2*V3
+	MOVQ    (8)(REG_P2), AX
+	MULQ    R14
+	ADDQ    AX, R10
+	MOVQ    R10, (24)(CX)       // C3
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    // U3*V2
-    XORQ    R10, R10
-    MOVQ    (24)(REG_P2), AX
-    MULQ    R12
-    ADDQ    AX, R8
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	// U3*V2
+	XORQ    R10, R10
+	MOVQ    (24)(REG_P2), AX
+	MULQ    R12
+	ADDQ    AX, R8
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    // U3*V1
-    MOVQ    (8)(REG_P2), AX
-    MULQ    R15
-    ADDQ    AX, R8
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	// U3*V1
+	MOVQ    (8)(REG_P2), AX
+	MULQ    R15
+	ADDQ    AX, R8
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    // U2*V2
-    MOVQ    (16)(REG_P2), AX
-    MULQ    R14
-    ADDQ    AX, R8
-    MOVQ    R8, (32)(CX)		// C4
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	// U2*V2
+	MOVQ    (16)(REG_P2), AX
+	MULQ    R14
+	ADDQ    AX, R8
+	MOVQ    R8, (32)(CX)		// C4
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    // U2*V3
-    XORQ    R8, R8
-    MOVQ    (24)(REG_P2), AX
-    MULQ    R14
-    ADDQ    AX, R9
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	// U2*V3
+	XORQ    R8, R8
+	MOVQ    (24)(REG_P2), AX
+	MULQ    R14
+	ADDQ    AX, R9
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    // U3*V2
-    MOVQ    (16)(REG_P2), AX
-    MULQ    R15
-    ADDQ    AX, R9
-    MOVQ    R9, (40)(CX)		// C5
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	// U3*V2
+	MOVQ    (16)(REG_P2), AX
+	MULQ    R15
+	ADDQ    AX, R9
+	MOVQ    R9, (40)(CX)		// C5
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    // U3*V3
-    MOVQ    (24)(REG_P2), AX
-    MULQ    R15
-    ADDQ    AX, R10
-    MOVQ    R10, (48)(CX)		// C6
-    ADCQ    DX, R8
-    MOVQ    R8, (56)(CX)		// C7
+	// U3*V3
+	MOVQ    (24)(REG_P2), AX
+	MULQ    R15
+	ADDQ    AX, R10
+	MOVQ    R10, (48)(CX)		// C6
+	ADCQ    DX, R8
+	MOVQ    R8, (56)(CX)		// C7
 
 	// CX[8-15] <- AH*BH
-    MOVQ    (32)(REG_P1), R11
-    MOVQ    (32)(REG_P2), AX
-    MULQ    R11
-    XORQ    R9, R9
-    MOVQ    AX, (64)(CX)        // C0
-    MOVQ    DX, R8
+	MOVQ    (32)(REG_P1), R11
+	MOVQ    (32)(REG_P2), AX
+	MULQ    R11
+	XORQ    R9, R9
+	MOVQ    AX, (64)(CX)        // C0
+	MOVQ    DX, R8
 
-    MOVQ    (48)(REG_P1), R14
-    MOVQ    (40)(REG_P2), AX
-    MULQ    R11
-    XORQ    R10, R10
-    ADDQ    AX, R8
-    ADCQ    DX, R9
+	MOVQ    (48)(REG_P1), R14
+	MOVQ    (40)(REG_P2), AX
+	MULQ    R11
+	XORQ    R10, R10
+	ADDQ    AX, R8
+	ADCQ    DX, R9
 
-    MOVQ    (40)(REG_P1), R12
-    MOVQ    (32)(REG_P2), AX
-    MULQ    R12
-    ADDQ    AX, R8
-    MOVQ    R8, (72)(CX)        // C1
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	MOVQ    (40)(REG_P1), R12
+	MOVQ    (32)(REG_P2), AX
+	MULQ    R12
+	ADDQ    AX, R8
+	MOVQ    R8, (72)(CX)        // C1
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    XORQ    R8, R8
-    MOVQ    (48)(REG_P2), AX
-    MULQ    R11
-    ADDQ    AX, R9
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	XORQ    R8, R8
+	MOVQ    (48)(REG_P2), AX
+	MULQ    R11
+	ADDQ    AX, R9
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    MOVQ    (32)(REG_P2), R13
-    MOVQ    R14, AX
-    MULQ    R13
-    ADDQ    AX, R9
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	MOVQ    (32)(REG_P2), R13
+	MOVQ    R14, AX
+	MULQ    R13
+	ADDQ    AX, R9
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    MOVQ    (40)(REG_P2), AX
-    MULQ    R12
-    ADDQ    AX, R9
-    MOVQ    R9, (80)(CX)        // C2
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	MOVQ    (40)(REG_P2), AX
+	MULQ    R12
+	ADDQ    AX, R9
+	MOVQ    R9, (80)(CX)        // C2
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    XORQ    R9, R9
-    MOVQ    (56)(REG_P2), AX
-    MULQ    R11
-    MOVQ    (56)(REG_P1), R15
-    ADDQ    AX, R10
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	XORQ    R9, R9
+	MOVQ    (56)(REG_P2), AX
+	MULQ    R11
+	MOVQ    (56)(REG_P1), R15
+	ADDQ    AX, R10
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    MOVQ    R15, AX
-    MULQ    R13
-    ADDQ    AX, R10
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	MOVQ    R15, AX
+	MULQ    R13
+	ADDQ    AX, R10
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    MOVQ    (48)(REG_P2), AX
-    MULQ    R12
-    ADDQ    AX, R10
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	MOVQ    (48)(REG_P2), AX
+	MULQ    R12
+	ADDQ    AX, R10
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    MOVQ    (40)(REG_P2), AX
-    MULQ    R14
-    ADDQ    AX, R10
-    MOVQ    R10, (88)(CX)       // C3
-    ADCQ    DX, R8
-    ADCQ    $0, R9
+	MOVQ    (40)(REG_P2), AX
+	MULQ    R14
+	ADDQ    AX, R10
+	MOVQ    R10, (88)(CX)       // C3
+	ADCQ    DX, R8
+	ADCQ    $0, R9
 
-    XORQ    R10, R10
-    MOVQ    (56)(REG_P2), AX
-    MULQ    R12
-    ADDQ    AX, R8
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	XORQ    R10, R10
+	MOVQ    (56)(REG_P2), AX
+	MULQ    R12
+	ADDQ    AX, R8
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    MOVQ    (40)(REG_P2), AX
-    MULQ    R15
-    ADDQ    AX, R8
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	MOVQ    (40)(REG_P2), AX
+	MULQ    R15
+	ADDQ    AX, R8
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    MOVQ    (48)(REG_P2), AX
-    MULQ    R14
-    ADDQ    AX, R8
-    MOVQ    R8, (96)(CX)        // C4
-    ADCQ    DX, R9
-    ADCQ    $0, R10
+	MOVQ    (48)(REG_P2), AX
+	MULQ    R14
+	ADDQ    AX, R8
+	MOVQ    R8, (96)(CX)        // C4
+	ADCQ    DX, R9
+	ADCQ    $0, R10
 
-    XORQ    R8, R8
-    MOVQ    (56)(REG_P2), AX
-    MULQ    R14
-    ADDQ    AX, R9
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	XORQ    R8, R8
+	MOVQ    (56)(REG_P2), AX
+	MULQ    R14
+	ADDQ    AX, R9
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    MOVQ    (48)(REG_P2), AX
-    MULQ    R15
-    ADDQ    AX, R9
-    MOVQ    R9, (104)(CX)       // C5
-    ADCQ    DX, R10
-    ADCQ    $0, R8
+	MOVQ    (48)(REG_P2), AX
+	MULQ    R15
+	ADDQ    AX, R9
+	MOVQ    R9, (104)(CX)       // C5
+	ADCQ    DX, R10
+	ADCQ    $0, R8
 
-    MOVQ    (56)(REG_P2), AX
-    MULQ    R15
-    ADDQ    AX, R10
-    MOVQ    R10, (112)(CX)      // C6
-    ADCQ    DX, R8
-    MOVQ    R8, (120)(CX)       // C7
+	MOVQ    (56)(REG_P2), AX
+	MULQ    R15
+	ADDQ    AX, R10
+	MOVQ    R10, (112)(CX)      // C6
+	ADCQ    DX, R8
+	MOVQ    R8, (120)(CX)       // C7
 
 	// [R8-R15] <- (AH+AL)*(BH+BL) - AL*BL
 	MOVQ    (SP), R8
