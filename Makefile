@@ -9,7 +9,7 @@ OPTS         ?=
 NOASM        ?=
 TEST_PATH    ?= ./...
 GOCACHE      ?= off
-BENCH_OPTS   ?= -v -bench=. -run="NonExistingTest"
+BENCH_OPTS   ?= -v -bench=. -run="NonExistingTest" -benchmem
 TEST_PATH    ?= ./...
 
 ifeq ($(NOASM),1)
@@ -25,7 +25,8 @@ TARGETS= \
 	drbg \
 	ec \
 	hash \
-	kem
+	kem \
+	utils
 
 prep-%:
 	mkdir -p $(GOPATH_LOCAL)/$(GOPATH_DIR)

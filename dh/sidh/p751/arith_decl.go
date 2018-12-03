@@ -1,4 +1,4 @@
-// +build amd64,!noasm
+// +build amd64,!noasm arm64,!noasm
 
 package p751
 
@@ -34,8 +34,8 @@ func fp751X2SubLazy(z, x, y *FpElementX2)
 //go:noescape
 func fp751Mul(z *FpElementX2, x, y *FpElement)
 
-// Perform Montgomery reduction: set z = x R^{-1} (mod 2*p).
-// Destroys the input value.
+// Compute Montgomery reduction: set z = x * R^{-1} (mod 2*p).
+// It may destroy the input value.
 //go:noescape
 func fp751MontgomeryReduce(z *FpElement, x *FpElementX2)
 

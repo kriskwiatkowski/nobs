@@ -31,7 +31,7 @@ func TestPrimeFieldElementToBigInt(t *testing.T) {
 //------------------------------------------------------------------------------
 
 func TestOneFp2ToBytes(t *testing.T) {
-	var x = P751_OneFp2
+	var x = P751OneFp2
 	var xBytes [188]byte
 
 	kCurveOps.Fp2ToBytes(xBytes[:], &x)

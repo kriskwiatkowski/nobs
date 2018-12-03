@@ -12,7 +12,7 @@ import (
 //------------------------------------------------------------------------------
 
 func TestOneFp2ToBytes(t *testing.T) {
-	var x = P503_OneFp2
+	var x = P503OneFp2
 	var xBytes [2 * P503_Bytelen]byte
 
 	kCurveOps.Fp2ToBytes(xBytes[:], &x)
@@ -30,9 +30,9 @@ func TestFp2ElementToBytesRoundTrip(t *testing.T) {
 	roundTrips := func(x GeneratedTestParams) bool {
 		var xBytes [2 * P503_Bytelen]byte
 		var xPrime Fp2Element
+
 		kCurveOps.Fp2ToBytes(xBytes[:], &x.ExtElem)
 		kCurveOps.Fp2FromBytes(&xPrime, xBytes[:])
-
 		return VartimeEqFp2(&xPrime, &x.ExtElem)
 	}
 

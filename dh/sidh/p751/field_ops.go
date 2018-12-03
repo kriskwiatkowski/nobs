@@ -3,26 +3,6 @@ package p751
 import . "github.com/henrydcase/nobs/dh/sidh/internal/isogeny"
 
 // 2*p751
-var (
-	// p751
-	p751 = FpElement{
-		0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
-		0xffffffffffffffff, 0xffffffffffffffff, 0xeeafffffffffffff,
-		0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
-		0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
-	// p751 + 1
-	p751p1 = FpElement{
-		0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
-		0x0000000000000000, 0x0000000000000000, 0xeeb0000000000000,
-		0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
-		0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
-	// 2*p751
-	p751x2 = FpElement{
-		0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
-		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xDD5FFFFFFFFFFFFF,
-		0xC7D92D0A93F0F151, 0xB52B363427EF98ED, 0x109D30CFADD7D0ED,
-		0x0AC56A08B964AE90, 0x1C25213F2F75B8CD, 0x0000DFCBAA83EE38}
-)
 
 //------------------------------------------------------------------------------
 // Implementtaion of FieldOperations
@@ -166,9 +146,9 @@ func (fp751Ops) ToMontgomery(x *Fp2Element) {
 	var aRR FpElementX2
 
 	// convert to montgomery domain
-	fp751Mul(&aRR, &x.A, &montgomeryRsq) // = a*R*R
-	fp751MontgomeryReduce(&x.A, &aRR)    // = a*R mod p
-	fp751Mul(&aRR, &x.B, &montgomeryRsq)
+	fp751Mul(&aRR, &x.A, &p751R2)     // = a*R*R
+	fp751MontgomeryReduce(&x.A, &aRR) // = a*R mod p
+	fp751Mul(&aRR, &x.B, &p751R2)
 	fp751MontgomeryReduce(&x.B, &aRR)
 }
 
@@ -184,6 +164,9 @@ func (fp751Ops) FromMontgomery(x *Fp2Element, out *Fp2Element) {
 	copy(aR[:], x.A[:])
 	fp751MontgomeryReduce(&out.A, &aR) // = a mod p in [0, 2p)
 	fp751StrongReduce(&out.A)          // = a mod p in [0, p)
+	for i := range aR {
+		aR[i] = 0
+	}
 	copy(aR[:], x.B[:])
 	fp751MontgomeryReduce(&out.B, &aR)
 	fp751StrongReduce(&out.B)

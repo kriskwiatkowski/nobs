@@ -2,23 +2,18 @@ package p751
 
 import (
 	. "github.com/henrydcase/nobs/dh/sidh/internal/isogeny"
+	cpu "github.com/henrydcase/nobs/utils"
 )
 
 const (
-	// The secret key size, in bytes. Secret key is actually different for
-	// torsion group 2 and 3. For 2-torsion group, last byte of secret key
-	// is always set to 0.
-	P751_SecretKeySize = 48
 	// SIDH public key byte size
 	P751_PublicKeySize = 564
 	// SIDH shared secret byte size.
 	P751_SharedSecretSize = 188
-	// Max size of secret key for 2-torsion group, corresponds to e2
+	// Max size of secret key for 2-torsion group, corresponds to 2^e2
 	P751_SecretBitLenA = 372
 	// Size of secret key for 3-torsion group, corresponds to floor(log_2(3^e3))
 	P751_SecretBitLenB = 378
-	// Sample rate to obtain a value in [0,3^238]
-	P751_SampleRate = 102
 	// P751 bytelen ceil(751/8)
 	P751_Bytelen = 94
 	// Size of a compuatation strategy for 2-torsion group
@@ -27,6 +22,17 @@ const (
 	strategySizeB = 238
 	// Number of 64-bit limbs used to store Fp element
 	NumWords = 12
+)
+
+// CPU Capabilities. Those flags are referred by assembly code. According to
+// https://github.com/golang/go/issues/28230, variables referred from the
+// assembly must be in the same package.
+// We declare them variables not constants in order to facilitate testing.
+var (
+	// Signals support for MULX which is in BMI2
+	HasBMI2 = cpu.X86.HasBMI2
+	// Signals support for ADX and BMI2
+	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 )
 
 // The x-coordinate of PA
@@ -174,26 +180,48 @@ var P751_BobIsogenyStrategy = [strategySizeB]uint32{
 	0x03, 0x02, 0x01, 0x01, 0x01, 0x01, 0x02, 0x01, 0x01, 0x01,
 	0x04, 0x02, 0x01, 0x01, 0x01, 0x02, 0x01, 0x01}
 
-var P751_OneFp2 = Fp2Element{
-    A: FpElement{
-    	0x249ad, 0x0, 0x0, 0x0, 0x0, 0x8310000000000000, 0x5527b1e4375c6c66, 0x697797bf3f4f24d0, 0xc89db7b2ac5c4e2e, 0x4ca4b439d2076956, 0x10f7926c7512c7e9, 0x2d5b24bce5e2},
-    B: FpElement{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
-}
+// Used internally by this package. Not consts as Go doesn't allow arrays to be consts
+// -------------------------------
 
-var P751_HalfFp2 = Fp2Element{
-    A: FpElement{
-        0x00000000000124D6, 0x0000000000000000, 0x0000000000000000,
-        0x0000000000000000, 0x0000000000000000, 0xB8E0000000000000,
-        0x9C8A2434C0AA7287, 0xA206996CA9A378A3, 0x6876280D41A41B52,
-        0xE903B49F175CE04F, 0x0F8511860666D227, 0x00004EA07CFF6E7F},
-    B: FpElement{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-}
+// p751
+var p751 = FpElement{
+	0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
+	0xffffffffffffffff, 0xffffffffffffffff, 0xeeafffffffffffff,
+	0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
+	0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
 
-// (2^768)^2 mod p
-// This can't be a constant because Go doesn't allow array constants, so try
-// not to modify it.
-var montgomeryRsq = FpElement{
+// 2*p751
+var p751x2 = FpElement{
+	0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+	0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xDD5FFFFFFFFFFFFF,
+	0xC7D92D0A93F0F151, 0xB52B363427EF98ED, 0x109D30CFADD7D0ED,
+	0x0AC56A08B964AE90, 0x1C25213F2F75B8CD, 0x0000DFCBAA83EE38}
+
+// p751 + 1
+var p751p1 = FpElement{
+	0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+	0x0000000000000000, 0x0000000000000000, 0xeeb0000000000000,
+	0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
+	0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
+
+// R^2 = (2^768)^2 mod p
+var p751R2 = FpElement{
 	2535603850726686808, 15780896088201250090, 6788776303855402382,
 	17585428585582356230, 5274503137951975249, 2266259624764636289,
 	11695651972693921304, 13072885652150159301, 4908312795585420432,
 	6229583484603254826, 488927695601805643, 72213483953973}
+
+// 1*R mod p
+var P751OneFp2 = Fp2Element{
+	A: FpElement{
+		0x249ad, 0x0, 0x0, 0x0, 0x0, 0x8310000000000000, 0x5527b1e4375c6c66, 0x697797bf3f4f24d0, 0xc89db7b2ac5c4e2e, 0x4ca4b439d2076956, 0x10f7926c7512c7e9, 0x2d5b24bce5e2},
+}
+
+// 1/2 * R mod p
+var P751HalfFp2 = Fp2Element{
+	A: FpElement{
+		0x00000000000124D6, 0x0000000000000000, 0x0000000000000000,
+		0x0000000000000000, 0x0000000000000000, 0xB8E0000000000000,
+		0x9C8A2434C0AA7287, 0xA206996CA9A378A3, 0x6876280D41A41B52,
+		0xE903B49F175CE04F, 0x0F8511860666D227, 0x00004EA07CFF6E7F},
+}

@@ -11,6 +11,7 @@ func TestFourIsogenyVersusSage(t *testing.T) {
 
 	// Given 4-torsion point on E, constructs a four-isogeny phi. Then evaluates
 	// point xR on the isogeny and compares with expected result.
+	// Values generated with reference implementation.
 
 	xP4 = ProjectivePoint{
 		X: Fp2Element{
@@ -56,6 +57,8 @@ func TestThreeIsogenyVersusSage(t *testing.T) {
 
 	// Given 3-torsion point on E, constructs a three-isogeny phi. Then evaluates
 	// point xR on the isogeny and compares with expected result.
+	// Values generated with reference implementation.
+
 	xP3 = ProjectivePoint{
 		X: Fp2Element{
 			A: FpElement{0x43C64B1158DE7ED, 0xC522F8AB7DCC9247, 0xC5BFCC8EA95E9F4D, 0xA6DFCE67C53F63BC, 0x9C6329D65EBBBE44, 0x91949F2E9864BD5A, 0xC9AE7B8B0435B0AF, 0x1607E735F9E10},

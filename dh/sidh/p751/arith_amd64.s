@@ -39,30 +39,6 @@
 #define REG_P2 SI
 #define REG_P3 DX
 
-// We can't write MOVQ $0, AX because Go's assembler incorrectly
-// optimizes this to XOR AX, AX, which clobbers the carry flags.
-//
-// This bug was defined to be "correct" behaviour (cf.
-// https://github.com/golang/go/issues/12405 ) by declaring that the MOV
-// pseudo-instruction clobbers flags, although this fact is mentioned
-// nowhere in the documentation for the Go assembler.
-//
-// Defining MOVQ to clobber flags has the effect that it is never safe
-// to interleave MOVQ with ADCQ and SBBQ instructions.  Since this is
-// required to write a carry chain longer than registers' working set,
-// all of the below code therefore relies on the unspecified and
-// undocumented behaviour that MOV won't clobber flags, except in the
-// case of the above-mentioned bug.
-//
-// However, there's also no specification of which instructions
-// correspond to machine instructions, and which are
-// pseudo-instructions (i.e., no specification of what the assembler
-// actually does), so this doesn't seem much worse than usual.
-//
-// Avoid the bug by dropping the bytes for `mov eax, 0` in directly:
-
-#define ZERO_AX_WITHOUT_CLOBBERING_FLAGS BYTE	$0xB8; BYTE $0; BYTE $0; BYTE $0; BYTE $0;
-
 TEXT ·fp751StrongReduce(SB), NOSPLIT, $0-8
 	MOVQ	x+0(FP), REG_P1
 
@@ -240,7 +216,7 @@ TEXT ·fp751AddReduced(SB), NOSPLIT, $0-24
 	MOVQ	R8, (72)(REG_P3)
 	MOVQ	R9, (80)(REG_P3)
 	MOVQ	R10, (88)(REG_P3)
-	ZERO_AX_WITHOUT_CLOBBERING_FLAGS
+	MOVQ	$0, AX
 	SBBQ	$0, AX
 
 	MOVQ	P751X2_0, SI
@@ -343,7 +319,7 @@ TEXT ·fp751SubReduced(SB), NOSPLIT, $0-24
 	MOVQ	(88)(REG_P1), AX
 	SBBQ	(88)(REG_P2), AX
 	MOVQ	AX, (88)(REG_P3)
-	ZERO_AX_WITHOUT_CLOBBERING_FLAGS
+	MOVQ	$0, AX
 	SBBQ	$0, AX
 
 	MOVQ	P751X2_0, SI
@@ -1335,10 +1311,357 @@ TEXT ·fp751Mul(SB), $96-24
 
 	RET
 
-TEXT ·fp751MontgomeryReduce(SB), $0-16
+// This multiplies a 256-bit number pointed to by M0 with p751+1.
+// It is assumed that M1 points to p751+1 stored as a 768-bit Fp751Element.
+// C points to the place to store the result and should be at least 192 bits.
+// This should only be used when the BMI2 and ADX instruction set extensions
+// are available.
+#define mul256x448bmi2adx(M0, M1, C, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) \
+	MOVQ	0+M0, DX		\
+	MULXQ	M1+40(SB), T1, T0	\
+	MULXQ	M1+48(SB), T3, T2	\
+	MOVQ	T1, 0+C			\	// C0_final
+	XORQ	AX, AX			\
+	MULXQ	M1+56(SB), T5, T4	\
+	ADOXQ	T3, T0			\
+	ADOXQ	T5, T2			\
+	MULXQ	M1+64(SB), T3, T1	\
+	ADOXQ	T3, T4			\
+	MULXQ	M1+72(SB), T6, T5	\
+	ADOXQ	T6, T1			\
+	MULXQ	M1+80(SB), T7, T3	\
+	ADOXQ	T7, T5			\
+	MULXQ	M1+88(SB), T8, T6	\
+	ADOXQ	T8, T3			\
+	ADOXQ	AX, T6			\
+					\
+	MOVQ	8+M0, DX		\
+	MULXQ	M1+40(SB), T7, T8	\
+	XORQ	AX, AX			\
+	ADCXQ	T7, T0			\
+	MOVQ	T0, 8+C			\	// C1_final
+	ADCXQ	T8, T2			\
+	MULXQ	M1+48(SB), T8, T7	\
+	ADOXQ	T8, T2			\
+	ADCXQ	T7, T4			\
+	MULXQ	M1+56(SB), T8, T0	\
+	ADOXQ	T8, T4			\
+	ADCXQ	T1, T0			\
+	MULXQ	M1+64(SB), T7, T1	\
+	ADCXQ	T5, T1			\
+	MULXQ	M1+72(SB), T8, T5	\
+	ADCXQ	T5, T3			\
+	MULXQ	M1+80(SB), T9, T5	\
+	ADCXQ	T5, T6			\
+	MULXQ	M1+88(SB), DX, T5	\
+	ADCXQ	AX, T5			\
+					\
+	ADOXQ	T7, T0			\
+	ADOXQ	T8, T1			\
+	ADOXQ	T9, T3			\
+	ADOXQ	DX, T6			\
+	ADOXQ	AX, T5			\
+					\
+	MOVQ	16+M0, DX		\
+	MULXQ	M1+40(SB), T7, T8	\
+	XORQ	AX, AX			\
+	ADCXQ	T7, T2			\
+	MOVQ	T2, 16+C		\	// C2_final
+	ADCXQ	T8, T4			\
+	MULXQ	M1+48(SB), T7, T8	\
+	ADOXQ	T7, T4			\
+	ADCXQ	T8, T0			\
+	MULXQ	M1+56(SB), T8, T2	\
+	ADOXQ	T8, T0			\
+	ADCXQ	T2, T1			\
+	MULXQ	M1+64(SB), T7, T2	\
+	ADCXQ	T2, T3			\
+	MULXQ	M1+72(SB), T8, T2	\
+	ADCXQ	T2, T6			\
+	MULXQ	M1+80(SB), T9, T2	\
+	ADCXQ	T2, T5			\
+	MULXQ	M1+88(SB), DX, T2	\
+	ADCXQ	AX, T2			\
+					\
+	ADOXQ	T7, T1			\
+	ADOXQ	T8, T3			\
+	ADOXQ	T9, T6			\
+	ADOXQ	DX, T5			\
+	ADOXQ	AX, T2			\
+					\
+	MOVQ	24+M0, DX		\
+	MULXQ	M1+40(SB), T7, T8	\
+	XORQ	AX, AX			\
+	ADCXQ	T4, T7			\
+	ADCXQ	T8, T0			\
+	MULXQ	M1+48(SB), T10, T8	\
+	ADOXQ	T10, T0			\
+	ADCXQ	T8, T1			\
+	MULXQ	M1+56(SB), T8, T4	\
+	ADOXQ	T8, T1			\
+	ADCXQ	T4, T3			\
+	MULXQ	M1+64(SB), T10, T4	\
+	ADCXQ	T4, T6			\
+	MULXQ	M1+72(SB), T8, T4	\
+	ADCXQ	T4, T5			\
+	MULXQ	M1+80(SB), T9, T4	\
+	ADCXQ	T4, T2			\
+	MULXQ	M1+88(SB), DX, T4	\
+	ADCXQ	AX, T4			\
+					\
+	ADOXQ	T10, T3			\
+	ADOXQ	T8, T6			\
+	ADOXQ	T9, T5			\
+	ADOXQ	DX, T2			\
+	ADOXQ	AX, T4
 
+// This multiplies a 256-bit number pointed to by M0 with p751+1.
+// It is assumed that M1 points to p751+1 stored as a 768-bit Fp751Element.
+// C points to the place to store the result and should be at least 192 bits.
+// This should only be used when the BMI2 instruction set extension is
+// available.
+#define mul256x448bmi2(M0, M1, C, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) \
+	MOVQ	0+M0, DX		\
+	MULXQ	M1+40(SB), T1, T0	\
+	MULXQ	M1+48(SB), T3, T2	\
+	MOVQ	T1, 0+C			\	// C0_final
+	XORQ	AX, AX			\
+	MULXQ	M1+56(SB), T5, T4	\
+	ADDQ	T3, T0			\
+	ADCQ	T5, T2			\
+	MULXQ	M1+64(SB), T3, T1	\
+	ADCQ	T3, T4			\
+	MULXQ	M1+72(SB), T6, T5	\
+	ADCQ	T6, T1			\
+	MULXQ	M1+80(SB), T7, T3	\
+	ADCQ	T7, T5			\
+	MULXQ	M1+88(SB), T8, T6	\
+	ADCQ	T8, T3			\
+	ADCQ	AX, T6			\
+					\
+	MOVQ	8+M0, DX		\
+	MULXQ	M1+40(SB), T7, T8	\
+	ADDQ	T7, T0			\
+	MOVQ	T0, 8+C			\	// C1_final
+	ADCQ	T8, T2			\
+	MULXQ	M1+48(SB), T8, T7	\
+	MOVQ	T8, 32+C		\
+	ADCQ	T7, T4			\
+	MULXQ	M1+56(SB), T8, T0	\
+	MOVQ	T8, 40+C		\
+	ADCQ	T1, T0			\
+	MULXQ	M1+64(SB), T7, T1	\
+	ADCQ	T5, T1			\
+	MULXQ	M1+72(SB), T8, T5	\
+	ADCQ	T5, T3			\
+	MULXQ	M1+80(SB), T9, T5	\
+	ADCQ	T5, T6			\
+	MULXQ	M1+88(SB), DX, T5	\
+	ADCQ	AX, T5			\
+					\
+	XORQ	AX, AX			\
+	ADDQ	32+C, T2		\
+	ADCQ	40+C, T4		\
+	ADCQ	T7, T0			\
+	ADCQ	T8, T1			\
+	ADCQ	T9, T3			\
+	ADCQ	DX, T6			\
+	ADCQ	AX, T5			\
+					\
+	MOVQ	16+M0, DX		\
+	MULXQ	M1+40(SB), T7, T8	\
+	ADDQ	T7, T2			\
+	MOVQ	T2, 16+C		\	// C2_final
+	ADCQ	T8, T4			\
+	MULXQ	M1+48(SB), T7, T8	\
+	MOVQ	T7, 32+C		\
+	ADCQ	T8, T0			\
+	MULXQ	M1+56(SB), T8, T2	\
+	MOVQ	T8, 40+C		\
+	ADCQ	T2, T1			\
+	MULXQ	M1+64(SB), T7, T2	\
+	ADCQ	T2, T3			\
+	MULXQ	M1+72(SB), T8, T2	\
+	ADCQ	T2, T6			\
+	MULXQ	M1+80(SB), T9, T2	\
+	ADCQ	T2, T5			\
+	MULXQ	M1+88(SB), DX, T2	\
+	ADCQ	AX, T2			\
+					\
+	XORQ	AX, AX			\
+	ADDQ	32+C, T4		\
+	ADCQ	40+C, T0		\
+	ADCQ	T7, T1			\
+	ADCQ	T8, T3			\
+	ADCQ	T9, T6			\
+	ADCQ	DX, T5			\
+	ADCQ	AX, T2			\
+					\
+	MOVQ	24+M0, DX		\
+	MULXQ	M1+40(SB), T7, T8	\
+	ADDQ	T4, T7			\
+	ADCQ	T8, T0			\
+	MULXQ	M1+48(SB), T10, T8	\
+	MOVQ	T10, 32+C		\
+	ADCQ	T8, T1			\
+	MULXQ	M1+56(SB), T8, T4	\
+	MOVQ	T8, 40+C		\
+	ADCQ	T4, T3			\
+	MULXQ	M1+64(SB), T10, T4	\
+	ADCQ	T4, T6			\
+	MULXQ	M1+72(SB), T8, T4	\
+	ADCQ	T4, T5			\
+	MULXQ	M1+80(SB), T9, T4	\
+	ADCQ	T4, T2			\
+	MULXQ	M1+88(SB), DX, T4	\
+	ADCQ	AX, T4			\
+					\
+	XORQ	AX, AX			\
+	ADDQ	32+C, T0		\
+	ADCQ	40+C, T1		\
+	ADCQ	T10, T3			\
+	ADCQ	T8, T6			\
+	ADCQ	T9, T5			\
+	ADCQ	DX, T2			\
+	ADCQ	AX, T4
+
+// Template for calculating the Montgomery reduction algorithm described in
+// section 5.2.3 of https://eprint.iacr.org/2017/1015.pdf. Template must be
+// customized with schoolbook multiplicaton for 256 x 448-bit number.
+// This macro reuses memory of IN value and *changes* it. Smashes registers
+// R[8-15], AX, BX, CX, DX, BP.
+// Input:
+//    * M0: 1536-bit number to be reduced
+//    * C : either mul256x448bmi2 or mul256x448bmi2adx
+// Output: OUT 768-bit
+#define REDC(C, M0, MULS) 	\
+    \ // a[0-3] x p751p1_nz --> result: [reg_p2+48], [reg_p2+56], [reg_p2+64], and rbp, r8:r14
+    MULS(M0, ·p751p1, 48+C, R8, R9, R13, R10, R14, R12, R11, BP, BX, CX, R15) \
+    XORQ    R15, R15        \
+    MOVQ    48+C, AX        \
+    MOVQ    56+C, DX        \
+    MOVQ    64+C, BX        \
+    ADDQ    40+M0, AX       \
+    ADCQ    48+M0, DX       \
+    ADCQ    56+M0, BX       \
+    MOVQ    AX, 40+M0       \
+    MOVQ    DX, 48+M0       \
+    MOVQ    BX, 56+M0       \
+    ADCQ    64+M0, BP       \
+    ADCQ    72+M0, R8       \
+    ADCQ    80+M0, R9       \
+    ADCQ    88+M0, R10      \
+    ADCQ    96+M0, R11      \
+    ADCQ    104+M0, R12     \
+    ADCQ    112+M0, R13     \
+    ADCQ    120+M0, R14     \
+    ADCQ    128+M0, R15     \
+    MOVQ    BP, 64+M0       \
+    MOVQ    R8, 72+M0       \
+    MOVQ    R9, 80+M0       \
+    MOVQ    R10, 88+M0      \
+    MOVQ    R11, 96+M0      \
+    MOVQ    R12, 104+M0     \
+    MOVQ    R13, 112+M0     \
+    MOVQ    R14, 120+M0     \
+    MOVQ    R15, 128+M0     \
+    MOVQ    136+M0, R8      \
+    MOVQ    144+M0, R9      \
+    MOVQ    152+M0, R10     \
+    MOVQ    160+M0, R11     \
+    MOVQ    168+M0, R12     \
+    MOVQ    176+M0, R13     \
+    MOVQ    184+M0, R14     \
+    ADCQ    $0, R8          \
+    ADCQ    $0, R9          \
+    ADCQ    $0, R10         \
+    ADCQ    $0, R11         \
+    ADCQ    $0, R12         \
+    ADCQ    $0, R13         \
+    ADCQ    $0, R14         \
+    MOVQ    R8, 136+M0      \
+    MOVQ    R9, 144+M0      \
+    MOVQ    R10, 152+M0     \
+    MOVQ    R11, 160+M0     \
+    MOVQ    R12, 168+M0     \
+    MOVQ    R13, 176+M0     \
+    MOVQ    R14, 184+M0     \
+    \ // a[4-7] x p751p1_nz --> result: [reg_p2+48], [reg_p2+56], [reg_p2+64], and rbp, r8:r14
+    MULS(32+M0, ·p751p1, 48+C, R8, R9, R13, R10, R14, R12, R11, BP, BX, CX, R15) \
+    XORQ    R15, R15          \
+    MOVQ    48+C, AX        \
+    MOVQ    56+C, DX        \
+    MOVQ    64+C, BX        \
+    ADDQ    72+M0, AX       \
+    ADCQ    80+M0, DX       \
+    ADCQ    88+M0, BX       \
+    MOVQ    AX, 72+M0       \
+    MOVQ    DX, 80+M0       \
+    MOVQ    BX, 88+M0       \
+    ADCQ    96+M0, BP       \
+    ADCQ    104+M0, R8      \
+    ADCQ    112+M0, R9      \
+    ADCQ    120+M0, R10     \
+    ADCQ    128+M0, R11     \
+    ADCQ    136+M0, R12     \
+    ADCQ    144+M0, R13     \
+    ADCQ    152+M0, R14     \
+    ADCQ    160+M0, R15     \
+    MOVQ    BP, 0+C         \   // Final result c0
+    MOVQ    R8, 104+M0      \
+    MOVQ    R9, 112+M0      \
+    MOVQ    R10, 120+M0     \
+    MOVQ    R11, 128+M0     \
+    MOVQ    R12, 136+M0     \
+    MOVQ    R13, 144+M0     \
+    MOVQ    R14, 152+M0     \
+    MOVQ    R15, 160+M0     \
+    MOVQ    168+M0, R12     \
+    MOVQ    176+M0, R13     \
+    MOVQ    184+M0, R14     \
+    ADCQ    $0, R12         \
+    ADCQ    $0, R13         \
+    ADCQ    $0, R14         \
+    MOVQ    R12, 168+M0     \
+    MOVQ    R13, 176+M0     \
+    MOVQ    R14, 184+M0     \
+    \ // a[8-11] x p751p1_nz --> result: [reg_p2+48], [reg_p2+56], [reg_p2+64], and rbp, r8:r14
+    MULS(64+M0, ·p751p1, 48+C, R8, R9, R13, R10, R14, R12, R11, BP, BX, CX, R15) \
+    MOVQ    48+C, AX        \   // Final result c1:c11
+    MOVQ    56+C, DX        \
+    MOVQ    64+C, BX        \
+    ADDQ    104+M0, AX      \
+    ADCQ    112+M0, DX      \
+    ADCQ    120+M0, BX      \
+    MOVQ    AX, 8+C         \
+    MOVQ    DX, 16+C        \
+    MOVQ    BX, 24+C        \
+    ADCQ    128+M0, BP      \
+    ADCQ    136+M0, R8      \
+    ADCQ    144+M0, R9      \
+    ADCQ    152+M0, R10     \
+    ADCQ    160+M0, R11     \
+    ADCQ    168+M0, R12     \
+    ADCQ    176+M0, R13     \
+    ADCQ    184+M0, R14     \
+    MOVQ    BP, 32+C        \
+    MOVQ    R8, 40+C        \
+    MOVQ    R9, 48+C        \
+    MOVQ    R10, 56+C       \
+    MOVQ    R11, 64+C       \
+    MOVQ    R12, 72+C       \
+    MOVQ    R13, 80+C       \
+    MOVQ    R14, 88+C
+
+TEXT ·fp751MontgomeryReduce(SB), $0-16
 	MOVQ z+0(FP), REG_P2
 	MOVQ x+8(FP), REG_P1
+
+	// Check wether to use optimized implementation
+	CMPB    ·HasADXandBMI2(SB), $1
+	JE      redc_with_mulx_adcx_adox
+	CMPB    ·HasBMI2(SB), $1
+	JE      redc_with_mulx
 
 	MOVQ	(REG_P1), R11
 	MOVQ	P751P1_5, AX
@@ -1940,7 +2263,20 @@ TEXT ·fp751MontgomeryReduce(SB), $0-16
 	ADCQ	$0, R10
 	ADDQ	(184)(REG_P1), R10		// Z11
 	MOVQ	R10, (88)(REG_P2)		// Z11
+	RET
 
+redc_with_mulx_adcx_adox:
+	// This implements the Montgomery reduction algorithm described in
+	// section 5.2.3 of https://eprint.iacr.org/2017/1015.pdf.
+	// This assumes that the BMI2 and ADX instruction set extensions are available.
+	REDC(0(REG_P2), 0(REG_P1), mul256x448bmi2adx)
+	RET
+
+redc_with_mulx:
+	// This implements the Montgomery reduction algorithm described in
+	// section 5.2.3 of https://eprint.iacr.org/2017/1015.pdf.
+	// This assumes that the BMI2 instruction set extension is available.
+	REDC(0(REG_P2), 0(REG_P1), mul256x448bmi2)
 	RET
 
 TEXT ·fp751AddLazy(SB), NOSPLIT, $0-24
@@ -2162,7 +2498,7 @@ TEXT ·fp751X2SubLazy(SB), NOSPLIT, $0-24
 	MOVQ	DI, (184)(REG_P3)
 
 	// Now the carry flag is 1 if x-y < 0.  If so, add p*2^768.
-	ZERO_AX_WITHOUT_CLOBBERING_FLAGS
+	MOVQ	$0, AX
 	SBBQ	$0, AX
 
 	// Load p into registers:
