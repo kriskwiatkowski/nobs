@@ -1,4 +1,4 @@
-// +build amd64,!noasm
+// +build amd64,!noasm arm64,!noasm
 
 package p503
 
@@ -32,15 +32,15 @@ func fp503X2AddLazy(z, x, y *FpElementX2)
 //go:noescape
 func fp503X2SubLazy(z, x, y *FpElementX2)
 
-// Compute z = x * y.
-//go:noescape
-func fp503Mul(z *FpElementX2, x, y *FpElement)
-
-// Perform Montgomery reduction: set z = x R^{-1} (mod 2*p).
-// Destroys the input value.
-//go:noescape
-func fp503MontgomeryReduce(z *FpElement, x *FpElementX2)
-
 // Reduce a field element in [0, 2*p) to one in [0,p).
 //go:noescape
 func fp503StrongReduce(x *FpElement)
+
+// Computes z = x * y.
+//go:noescape
+func fp503Mul(z *FpElementX2, x, y *FpElement)
+
+// Computes the Montgomery reduction z = x R^{-1} (mod 2*p). On return value
+// of x may be changed. z=x not allowed.
+//go:noescape
+func fp503MontgomeryReduce(z *FpElement, x *FpElementX2)

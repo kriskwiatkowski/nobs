@@ -2,23 +2,18 @@ package p503
 
 import (
 	. "github.com/henrydcase/nobs/dh/sidh/internal/isogeny"
+	cpu "github.com/henrydcase/nobs/utils"
 )
 
 const (
-	// The secret key size, in bytes. Secret key is actually different for
-	// torsion group 2 and 3. For 2-torsion group, last byte of secret key
-	// is always set to 0.
-	P503_SecretKeySize = 32
 	// SIDH public key byte size
 	P503_PublicKeySize = 378
 	// SIDH shared secret byte size.
 	P503_SharedSecretSize = 126
-	// Max size of secret key for 2-torsion group, corresponds to e2
+	// Max size of secret key for 2-torsion group, corresponds to 2^e2 - 1
 	P503_SecretBitLenA = 250
-	// Size of secret key for 3-torsion group, corresponds to floor(log_2(3^e3))
+	// Size of secret key for 3-torsion group, corresponds to log_2(3^e3) - 1
 	P503_SecretBitLenB = 252
-	// Sample rate to obtain a value in
-	P503_SampleRate = 102
 	// Size of a compuatation strategy for 2-torsion group
 	strategySizeA = 124
 	// Size of a compuatation strategy for 3-torsion group
@@ -27,6 +22,17 @@ const (
 	P503_Bytelen = 63
 	// Number of limbs for a field element
 	NumWords = 8
+)
+
+// CPU Capabilities. Those flags are referred by assembly code. According to
+// https://github.com/golang/go/issues/28230, variables referred from the
+// assembly must be in the same package.
+// We declare them variables not constants in order to facilitate testing.
+var (
+	// Signals support for MULX which is in BMI2
+	HasBMI2 = cpu.X86.HasBMI2
+	// Signals support for ADX and BMI2
+	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 )
 
 // The x-coordinate of PA
@@ -133,7 +139,7 @@ var p503 = FpElement{
 	0x13085BDA2211E7A0, 0x1B9BF6C87B7E7DAF, 0x6045C6BDDA77A4D0, 0x004066F541811E1E,
 }
 
-// 2*p751
+// 2*503
 var p503x2 = FpElement{
 	0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0x57FFFFFFFFFFFFFF,
 	0x2610B7B44423CF41, 0x3737ED90F6FCFB5E, 0xC08B8D7BB4EF49A0, 0x0080CDEA83023C3C,
@@ -151,15 +157,21 @@ var p503R2 = FpElement{
 	0x9E51998BD84D4423, 0xBF8999CBAC3B5695, 0x46E9127BCE14CDB6, 0x003F6CFCE8B81771,
 }
 
+// p503 + 1 left-shifted by 8, assuming little endianness
+var p503p1s8 = FpElement{
+	0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+	0x085BDA2211E7A0AC, 0x9BF6C87B7E7DAF13, 0x45C6BDDA77A4D01B, 0x4066F541811E1E60,
+}
+
 // 1*R mod p
-var P503_OneFp2 = Fp2Element{
+var P503OneFp2 = Fp2Element{
 	A: FpElement{
 		0x00000000000003F9, 0x0000000000000000, 0x0000000000000000, 0xB400000000000000,
 		0x63CB1A6EA6DED2B4, 0x51689D8D667EB37D, 0x8ACD77C71AB24142, 0x0026FBAEC60F5953},
 }
 
 // 1/2 * R mod p
-var P503_HalfFp2 = Fp2Element{
+var P503HalfFp2 = Fp2Element{
 	A: FpElement{
 		0x00000000000001FC, 0x0000000000000000, 0x0000000000000000, 0xB000000000000000,
 		0x3B69BB2464785D2A, 0x36824A2AF0FE9896, 0xF5899F427A94F309, 0x0033B15203C83BB8},

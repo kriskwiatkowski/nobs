@@ -10,7 +10,7 @@ import (
 func TestOne(t *testing.T) {
 	var tmp Fp2Element
 
-	kFieldOps.Mul(&tmp, &P751_OneFp2, &affine_xP)
+	kFieldOps.Mul(&tmp, &P751OneFp2, &affine_xP)
 	if !VartimeEqFp2(&tmp, &affine_xP) {
 		t.Error("Not equal 1")
 	}
@@ -20,7 +20,7 @@ func TestOne(t *testing.T) {
 func TestScalarMultVersusSage(t *testing.T) {
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P751_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P751OneFp2}
 	xP = ScalarMult(&curve, &xP, mScalarBytes[:]) // = x([m]P)
 	affine_xQ := xP.ToAffine(kCurveOps)
 	if !VartimeEqFp2(&affine_xaP, affine_xQ) {
@@ -49,7 +49,7 @@ func Test_jInvariant(t *testing.T) {
 func TestProjectivePointVartimeEq(t *testing.T) {
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P751_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P751OneFp2}
 	xQ := xP
 	// Scale xQ, which results in the same projective point
 	kFieldOps.Mul(&xQ.X, &xQ.X, &curve_A)
@@ -64,7 +64,7 @@ func TestPointDoubleVersusSage(t *testing.T) {
 	var params = kCurveOps.CalcCurveParamsEquiv4(&curve)
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P751_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P751OneFp2}
 	kCurveOps.Pow2k(&xP, &params, 1)
 	affine_xQ := xP.ToAffine(kCurveOps)
 	if !VartimeEqFp2(affine_xQ, &affine_xP2) {
@@ -76,7 +76,7 @@ func TestPointMul4VersusSage(t *testing.T) {
 	var params = kCurveOps.CalcCurveParamsEquiv4(&curve)
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P751_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P751OneFp2}
 	kCurveOps.Pow2k(&xP, &params, 2)
 	affine_xQ := xP.ToAffine(kCurveOps)
 	if !VartimeEqFp2(affine_xQ, &affine_xP4) {
@@ -88,7 +88,7 @@ func TestPointMul9VersusSage(t *testing.T) {
 	var params = kCurveOps.CalcCurveParamsEquiv3(&curve)
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P751_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P751OneFp2}
 	kCurveOps.Pow3k(&xP, &params, 2)
 	affine_xQ := xP.ToAffine(kCurveOps)
 	if !VartimeEqFp2(affine_xQ, &affine_xP9) {
@@ -100,7 +100,7 @@ func TestPointPow2kVersusScalarMult(t *testing.T) {
 	var xP, xQ, xR ProjectivePoint
 	var params = kCurveOps.CalcCurveParamsEquiv4(&curve)
 
-	xP = ProjectivePoint{X: affine_xP, Z: P751_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P751OneFp2}
 	xQ = xP
 	kCurveOps.Pow2k(&xQ, &params, 5)
 	xR = ScalarMult(&curve, &xP, []byte{32})
@@ -128,7 +128,7 @@ func TestRecoverCoordinateA(t *testing.T) {
 		A: FpElement{0x6ffb44306a153779, 0xc0ffef21f2f918f3, 0x196c46d35d77f778, 0x4a73f80452edcfe6, 0x9b00836bce61c67f, 0x387879418d84219e, 0x20700cf9fc1ec5d1, 0x1dfe2356ec64155e, 0xf8b9e33038256b1c, 0xd2aaf2e14bada0f0, 0xb33b226e79a4e313, 0x6be576fad4e5},
 		B: FpElement{0x7db5dbc88e00de34, 0x75cc8cb9f8b6e11e, 0x8c8001c04ebc52ac, 0x67ef6c981a0b5a94, 0xc3654fbe73230738, 0xc6a46ee82983ceca, 0xed1aa61a27ef49f0, 0x17fe5a13b0858fe0, 0x9ae0ca945a4c6b3c, 0x234104a218ad8878, 0xa619627166104394, 0x556a01ff2e7e}}
 
-	cparam.C = P751_OneFp2
+	cparam.C = P751OneFp2
 	kCurveOps.RecoverCoordinateA(&cparam, &affine_xP, &affine_xQ, &affine_xQmP)
 
 	// Check A is correct
@@ -137,8 +137,8 @@ func TestRecoverCoordinateA(t *testing.T) {
 	}
 
 	// Check C is not changed
-	if !VartimeEqFp2(&cparam.C, &P751_OneFp2) {
-		t.Error("\nExpected\n", cparam.C, "\nfound\n", P751_OneFp2)
+	if !VartimeEqFp2(&cparam.C, &P751OneFp2) {
+		t.Error("\nExpected\n", cparam.C, "\nfound\n", P751OneFp2)
 	}
 }
 
@@ -176,6 +176,14 @@ func TestPointTripleVersusAddDouble(t *testing.T) {
 }
 
 func BenchmarkThreePointLadder379BitScalar(b *testing.B) {
+	var mScalarBytes = [...]uint8{84, 222, 146, 63, 85, 18, 173, 162, 167, 38, 10, 8, 143, 176, 93, 228, 247, 128, 50, 128, 205, 42, 15, 137, 119, 67, 43, 3, 61, 91, 237, 24, 235, 12, 53, 96, 186, 164, 232, 223, 197, 224, 64, 109, 137, 63, 246, 4}
+
+	for n := 0; n < b.N; n++ {
+		kCurveOps.ScalarMul3Pt(&curve, &threePointLadderInputs[0], &threePointLadderInputs[1], &threePointLadderInputs[2], uint(len(mScalarBytes)*8), mScalarBytes[:])
+	}
+}
+
+func BenchmarkR2L379BitScalar(b *testing.B) {
 	var mScalarBytes = [...]uint8{84, 222, 146, 63, 85, 18, 173, 162, 167, 38, 10, 8, 143, 176, 93, 228, 247, 128, 50, 128, 205, 42, 15, 137, 119, 67, 43, 3, 61, 91, 237, 24, 235, 12, 53, 96, 186, 164, 232, 223, 197, 224, 64, 109, 137, 63, 246, 4}
 
 	for n := 0; n < b.N; n++ {

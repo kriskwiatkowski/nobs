@@ -10,7 +10,7 @@ import (
 func TestOne(t *testing.T) {
 	var tmp Fp2Element
 
-	kFieldOps.Mul(&tmp, &P503_OneFp2, &affine_xP)
+	kFieldOps.Mul(&tmp, &P503OneFp2, &affine_xP)
 	if !VartimeEqFp2(&tmp, &affine_xP) {
 		t.Error("Not equal 1")
 	}
@@ -20,7 +20,7 @@ func TestOne(t *testing.T) {
 func TestScalarMultVersusSage(t *testing.T) {
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P503_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P503OneFp2}
 	xP = ScalarMult(&curve, &xP, mScalarBytes[:]) // = x([m]P)
 	affine_xQ := xP.ToAffine(kCurveOps)
 	if !VartimeEqFp2(&affine_xaP, affine_xQ) {
@@ -49,7 +49,7 @@ func Test_jInvariant(t *testing.T) {
 func TestProjectivePointVartimeEq(t *testing.T) {
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P503_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P503OneFp2}
 	xQ := xP
 	// Scale xQ, which results in the same projective point
 	kFieldOps.Mul(&xQ.X, &xQ.X, &curve_A)
@@ -64,7 +64,7 @@ func TestPointDoubleVersusSage(t *testing.T) {
 	var params = kCurveOps.CalcCurveParamsEquiv4(&curve)
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P503_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P503OneFp2}
 	kCurveOps.Pow2k(&xP, &params, 1)
 	affine_xQ := xP.ToAffine(kCurveOps)
 	if !VartimeEqFp2(affine_xQ, &affine_xP2) {
@@ -76,7 +76,7 @@ func TestPointMul4VersusSage(t *testing.T) {
 	var params = kCurveOps.CalcCurveParamsEquiv4(&curve)
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P503_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P503OneFp2}
 	kCurveOps.Pow2k(&xP, &params, 2)
 	affine_xQ := xP.ToAffine(kCurveOps)
 	if !VartimeEqFp2(affine_xQ, &affine_xP4) {
@@ -88,7 +88,7 @@ func TestPointMul9VersusSage(t *testing.T) {
 	var params = kCurveOps.CalcCurveParamsEquiv3(&curve)
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: P503_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P503OneFp2}
 	kCurveOps.Pow3k(&xP, &params, 2)
 	affine_xQ := xP.ToAffine(kCurveOps)
 	if !VartimeEqFp2(affine_xQ, &affine_xP9) {
@@ -100,7 +100,7 @@ func TestPointPow2kVersusScalarMult(t *testing.T) {
 	var xP, xQ, xR ProjectivePoint
 	var params = kCurveOps.CalcCurveParamsEquiv4(&curve)
 
-	xP = ProjectivePoint{X: affine_xP, Z: P503_OneFp2}
+	xP = ProjectivePoint{X: affine_xP, Z: P503OneFp2}
 	xQ = xP
 	kCurveOps.Pow2k(&xQ, &params, 5)
 	xR = ScalarMult(&curve, &xP, []byte{32})

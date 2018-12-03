@@ -136,6 +136,7 @@ func (fp503Ops) CondSwap(xPx, xPz, xQx, xQz *Fp2Element, choice uint8) {
 // Converts values in x.A and x.B to Montgomery domain
 // x.A = x.A * R mod p
 // x.B = x.B * R mod p
+// Performs v = v*R^2*R^(-1) mod p, for both x.A and x.B
 func (fp503Ops) ToMontgomery(x *Fp2Element) {
 	var aRR FpElementX2
 
@@ -155,9 +156,14 @@ func (fp503Ops) FromMontgomery(x *Fp2Element, out *Fp2Element) {
 	var aR FpElementX2
 
 	// convert from montgomery domain
+	// TODO: make fpXXXMontgomeryReduce use stack instead of reusing aR
+	//       so that we don't have do this copy here
 	copy(aR[:], x.A[:])
 	fp503MontgomeryReduce(&out.A, &aR) // = a mod p in [0, 2p)
 	fp503StrongReduce(&out.A)          // = a mod p in [0, p)
+	for i := range aR {
+		aR[i] = 0
+	}
 	copy(aR[:], x.B[:])
 	fp503MontgomeryReduce(&out.B, &aR)
 	fp503StrongReduce(&out.B)
