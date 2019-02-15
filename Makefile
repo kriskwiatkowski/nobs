@@ -12,6 +12,7 @@ BENCH_OPTS   ?= -v -bench=. -run="^_"
 V            ?= 0
 GOCACHE      ?= off
 GOARCH       ?=
+ETC_DIR      = $(PRJ_DIR)/etc
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
@@ -55,3 +56,7 @@ vendor-sidh-for-tls: clean
 bench: clean $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
 		$(BENCH_OPTS) ./...
+
+bench_csidh: clean make_dirs $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
+		-v -bench=. -benchmem github.com/henrydcase/nobs/dh/csidh/
