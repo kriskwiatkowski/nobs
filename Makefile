@@ -4,8 +4,14 @@ PRJ_DIR      = $(abspath $(dir $(MK_FILE_PATH)))
 GOPATH_LOCAL = $(PRJ_DIR)/build/
 GOPATH_DIR   = src/github.com/henrydcase/nobs
 VENDOR_DIR   = tls_vendor
-OPTS         ?=
+OPTS         ?= -v
 NOASM		 ?=
+ETC_DIR      = $(PRJ_DIR)/etc
+GO           ?= go
+BENCH_OPTS   ?= -v -bench=. -run="^_"
+V            ?= 0
+GOCACHE      ?= off
+GOARCH       ?=
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
@@ -45,3 +51,7 @@ vendor-sidh-for-tls: clean
 	mkdir -p $(VENDOR_DIR)/github_com/henrydcase/nobs/
 	rsync -a . $(VENDOR_DIR)/github_com/henrydcase/nobs/ --exclude=$(VENDOR_DIR) --exclude=.git --exclude=.travis.yml --exclude=README.md
 	find $(VENDOR_DIR) -type f -print0 -name "*.go" | xargs -0 sed -i 's/github\.com/github_com/g'
+
+bench: clean $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
+		$(BENCH_OPTS) ./...
