@@ -1,11 +1,24 @@
 sudo: required
 language: go
 
-script:
-  - NOASM=0 make test
-  - NOASM=1 make test
-  - NOASM=0 make cover
-  - NOASM=1 make cover
+matrix:
+  include:
+    - name: "Go on x86-64"
+      os: linux
+      script:
+        - make clean
+        - NOASM=0 make test
+        - NOASM=1 make test
+        - NOASM=0 make cover
+        - NOASM=1 make cover
+    - name: "Go on ARM64"
+      services: docker
+      os: linux
+      script:
+        - docker run --rm --privileged multiarch/qemu-user-static:register --reset
+        - docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go" /bin/bash -c "NOASM=0 make test"
+        - docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go" /bin/bash -c "NOASM=1 make test"
+
 
 after_script:
   - bash <(curl -s https://codecov.io/bash) -t 8a75b459-85b1-4e5d-aa12-4dd705914700
