@@ -13,7 +13,7 @@
 package drbg
 
 import (
-	"crypto/aes"
+	"github.com/henrydcase/nobs/drbg/internal/aes"
 )
 
 // Constants below correspond to AES-256, which is currently
@@ -25,16 +25,17 @@ const (
 )
 
 type CtrDrbg struct {
-	v          []byte
-	key        []byte
+	v          [BlockLen]byte
+	key        [KeyLen]byte
 	counter    uint
 	strength   uint
 	resistance bool
+	blockEnc   aes.AES
+	tmpBlk     [3 * BlockLen]byte
 }
 
 func NewCtrDrbg() *CtrDrbg {
-	var c = new(CtrDrbg)
-	return c
+	return new(CtrDrbg)
 }
 
 func (c *CtrDrbg) inc() {
@@ -75,34 +76,31 @@ func (c *CtrDrbg) Init(entropy, personalization []byte) bool {
 		seedBuf[i] ^= personalization[i]
 	}
 
-	c.key = make([]byte, KeyLen)
-	c.v = make([]byte, BlockLen)
+	c.blockEnc.SetKey(c.key[:])
 	c.update(seedBuf[:])
 	c.counter = 1
 	return true
-
 }
-func (c *CtrDrbg) update(data []byte) {
-	var buf [3 * BlockLen]byte
 
+func (c *CtrDrbg) update(data []byte) {
 	if len(data) != SeedLen {
-		// OZAPTF: panic?
 		panic("Provided data is not equal to strength/8")
 	}
 
+	// deliberatelly not using len(c.tmpBlk)
 	for i := 0; i < 3*BlockLen; i += BlockLen {
 		c.inc()
-		// Ignore error => NewCipher returns error when c.key has unexpected size
-		encBlock, _ := aes.NewCipher(c.key)
-		encBlock.Encrypt(buf[i:], c.v)
+		c.blockEnc.SetKey(c.key[:])
+		c.blockEnc.Encrypt(c.tmpBlk[i:], c.v[:])
 	}
 
-	for i := 0; i < len(buf); i++ {
-		buf[i] ^= data[i]
+	for i := 0; i < 3*BlockLen; i++ {
+		c.tmpBlk[i] ^= data[i]
 	}
 
-	copy(c.key, buf[:KeyLen])
-	copy(c.v, buf[KeyLen:])
+	//c.updateKey(buf[:KeyLen])
+	copy(c.key[:], c.tmpBlk[:KeyLen])
+	copy(c.v[:], c.tmpBlk[KeyLen:])
 }
 
 func (c *CtrDrbg) Reseed(entropy, data []byte) {
@@ -128,7 +126,7 @@ func (c *CtrDrbg) Reseed(entropy, data []byte) {
 	c.counter = 1
 }
 
-func (c *CtrDrbg) Read(b, ad []byte) (n int, err error) {
+func (c *CtrDrbg) ReadWithAdditionalData(out, ad []byte) (n int, err error) {
 	var seedBuf [SeedLen]byte
 	// TODO: check reseed_counter > reseed_interval
 
@@ -138,17 +136,25 @@ func (c *CtrDrbg) Read(b, ad []byte) (n int, err error) {
 		c.update(seedBuf[:])
 	}
 
-	// OZAPTF: would be better not need to allocate that
-	buf := make([]byte, ((len(b)+BlockLen)/BlockLen)*BlockLen)
-	for i := 0; i < len(b); i += BlockLen {
+	// Number of blocks to write minus last one
+	blocks := len(out) / BlockLen
+	for i := 0; i < blocks; i++ {
 		c.inc()
-		// Ignore error => NewCipher returns error when c.key has unexpected size
-		encBlock, _ := aes.NewCipher(c.key)
-		encBlock.Encrypt(buf[i:], c.v)
+		c.blockEnc.SetKey(c.key[:])
+		c.blockEnc.Encrypt(out[i*BlockLen:], c.v[:])
 	}
 
-	copy(b, buf[:len(b)])
+	// Copy remainder - case for out being not block aligned
+	c.blockEnc.Encrypt(c.tmpBlk[:], c.v[:])
+	copy(out[blocks*BlockLen:], c.tmpBlk[:len(out)%BlockLen])
+
 	c.update(seedBuf[:])
 	c.counter += 1
-	return len(b), nil
+	return len(out), nil
+}
+
+// Read reads data from DRBG. Size of data is determined by
+// out buffer.
+func (c *CtrDrbg) Read(out []byte) (n int, err error) {
+	return c.ReadWithAdditionalData(out, nil)
 }

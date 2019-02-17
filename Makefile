@@ -8,14 +8,25 @@ OPTS         ?= -v
 NOASM		 ?=
 ETC_DIR      = $(PRJ_DIR)/etc
 GO           ?= go
-BENCH_OPTS   ?= -v -bench=. -run="^_"
+BENCH_OPTS   ?= -bench=. -run="^_"
 V            ?= 0
 GOCACHE      ?= off
 GOARCH       ?=
 ETC_DIR      = $(PRJ_DIR)/etc
-
+BENCH_NAME	 = .
+DBG 		 = 1
+OPTS_ENV	 =
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
+endif
+
+ifeq ($(DBG),1)
+	DBG_FLAGS+= -m -m 	# escape analysis
+	DBG_FLAGS+= -l		# no inline
+	DBG_FLAGS+= -N		# debug symbols
+	#OPTS+=-gcflags=all="$(DBG_FLAGS)"
+	OPTS+=-gcflags "$(DBG_FLAGS)"
+	OPTS_ENV+= GOTRACEBACK=crash	# enable core dumps
 endif
 
 TARGETS= \
@@ -23,7 +34,8 @@ TARGETS= \
 	drbg \
 	ec \
 	hash \
-	kem
+	kem \
+	utils
 
 prep-%:
 	mkdir -p $(GOPATH_LOCAL)/$(GOPATH_DIR)
@@ -34,14 +46,14 @@ make_dirs:
 	cp -rf etc $(GOPATH_LOCAL)/$(GOPATH_DIR)
 
 test: clean make_dirs $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test $(OPTS) -v ./...
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test $(OPTS) ./...
 
 build: clean make_dirs $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go build $(OPTS) -v ./...
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go build $(OPTS) ./...
 
 cover:
-	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test \
-		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) -v ./...
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test \
+		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) ./...
 	cat $(GOPATH_LOCAL)/coverage_$(NOASM).txt >> coverage.txt
 
 clean:
@@ -54,9 +66,5 @@ vendor-sidh-for-tls: clean
 	find $(VENDOR_DIR) -type f -print0 -name "*.go" | xargs -0 sed -i 's/github\.com/github_com/g'
 
 bench: clean $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) GOMAXPROCS=1 $(GO) test \
 		$(BENCH_OPTS) ./...
-
-bench_csidh: clean make_dirs $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
-		-v -bench=. -benchmem github.com/henrydcase/nobs/dh/csidh/
