@@ -5,10 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"testing"
 
 	crand "crypto/rand"
+	"github.com/henrydcase/nobs/drbg"
 	mrand "math/rand"
-	"testing"
 )
 
 // Possible values for "Status"
@@ -27,6 +28,9 @@ var StatusValues = map[int]string{
 	InvalidPublicKey1:   "invalid_public_key1",
 	InvalidPublicKey2:   "invalid_public_key2",
 }
+
+// DRBG used during test execution
+var rng *drbg.CtrDrbg
 
 type TestVector struct {
 	Id     int    `json:"Id"`
@@ -98,7 +102,7 @@ func TestPrivateKeyExportImport(t *testing.T) {
 	var buf [37]uint8
 	for i := 0; i < 100; i++ {
 		var prv1, prv2 PrivateKey
-		prv1.Generate(crand.Reader)
+		prv1.Generate(rng)
 		prv1.Export(buf[:])
 		prv2.Import(buf[:])
 
@@ -115,7 +119,7 @@ func TestPublicKeyExportImport(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		var prv PrivateKey
 		var pub1, pub2 PublicKey
-		prv.Generate(crand.Reader)
+		prv.Generate(rng)
 		pub1.Generate(&prv)
 
 		pub1.Export(buf[:])
@@ -268,39 +272,101 @@ func testProcessTestVectors(t *testing.T) {
 
 func TestProcessTestVectors(t *testing.T) { testProcessTestVectors(t) }
 
+// Private key generation
 func BenchmarkGeneratePrivate(b *testing.B) {
-	var prv PrivateKey
 	for n := 0; n < b.N; n++ {
-		prv.Generate(crand.Reader)
+		var prv PrivateKey
+		prv.Generate(rng)
 	}
 }
 
+// Public key generation from private (group action on empty key)
+func BenchmarkGeneratePublic(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		var prv PrivateKey
+		var pub PublicKey
+		prv.Generate(rng)
+		pub.Generate(&prv)
+	}
+}
+
+// Benchmark validation on same key multiple times
 func BenchmarkValidate(b *testing.B) {
 	var pub PublicKey
 	var prv PrivateKey
+
+	prv.Generate(rng)
+	pub.Generate(&prv)
+
 	for n := 0; n < b.N; n++ {
-		prv.Generate(crand.Reader)
+		pub.Validate()
+	}
+}
+
+// Benchmark validation on random (most probably wrong) key
+func BenchmarkValidateRandom(b *testing.B) {
+	var tmp [64]byte
+	var pub PublicKey
+
+	// Initialize seed
+	for n := 0; n < b.N; n++ {
+		if _, err := rng.Read(tmp[:]); err != nil {
+			b.FailNow()
+		}
+		pub.Import(tmp[:])
+	}
+}
+
+// Benchmark validation on different keys
+func BenchmarkValidateGenerated(b *testing.B) {
+	var pub PublicKey
+	var prv PrivateKey
+
+	for n := 0; n < b.N; n++ {
+		prv.Generate(rng)
 		pub.Generate(&prv)
 		pub.Validate()
 	}
 }
 
-func BenchmarkEphemeralKeyExchange(b *testing.B) {
+func BenchmarkDeriveGenerated(b *testing.B) {
 	var ss [64]uint8
 	var prv1, prv2 PrivateKey
 	var pub1, pub2 PublicKey
 	for n := 0; n < b.N; n++ {
-		prv1.Generate(crand.Reader)
+		prv1.Generate(rng)
 		pub1.Generate(&prv1)
 
-		prv2.Generate(crand.Reader)
+		prv2.Generate(rng)
 		pub2.Generate(&prv2)
 
 		pub1.DeriveSecret(ss[:], &pub2, &prv1)
 	}
 }
 
-func BenchmarkProcessTestVectors(b *testing.B) {
-	// This bench won't crash as it's run after all tests are passed
-	testProcessTestVectors(nil)
+func BenchmarkDerive(b *testing.B) {
+	var ss [64]uint8
+	var prv1, prv2 PrivateKey
+	var pub1, pub2 PublicKey
+
+	prv1.Generate(rng)
+	pub1.Generate(&prv1)
+
+	prv2.Generate(rng)
+	pub2.Generate(&prv2)
+
+	for n := 0; n < b.N; n++ {
+		pub1.DeriveSecret(ss[:], &pub2, &prv1)
+	}
+}
+
+func init() {
+	var tmp [32]byte
+
+	// Init drbg
+	rng = drbg.NewCtrDrbg()
+	crand.Read(tmp[:])
+	if !rng.Init(tmp[:], nil) {
+		panic("Can't initialize DRBG")
+	}
 }
