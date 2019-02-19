@@ -79,6 +79,7 @@ func cswapPoint(P1, P2 *Point, choice uint8) {
 // see this: https://eprint.iacr.org/2017/264.pdf
 func xMul512(kP, P *Point, co *Coeff, k *Fp) {
 	var A24 Coeff
+
 	R := *P
 	// P = P-Q
 	PdQ := *P

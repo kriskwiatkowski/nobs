@@ -13,7 +13,7 @@ V            ?= 0
 GOCACHE      ?= off
 GOARCH       ?=
 ETC_DIR      = $(PRJ_DIR)/etc
-BENCH_NAME	 = .
+BENCH_NAME	 = BenchmarkXMul
 DBG 		 = 1
 OPTS_ENV	 =
 ifeq ($(NOASM),1)
@@ -21,9 +21,9 @@ ifeq ($(NOASM),1)
 endif
 
 ifeq ($(DBG),1)
-	DBG_FLAGS+= -m -m 	# escape analysis
-	DBG_FLAGS+= -l		# no inline
-	DBG_FLAGS+= -N		# debug symbols
+	DBG_FLAGS+= #-m 	# escape analysis
+	DBG_FLAGS+= -l	# no inline
+	DBG_FLAGS+= -N	# debug symbols
 	#OPTS+=-gcflags=all="$(DBG_FLAGS)"
 	OPTS+=-gcflags "$(DBG_FLAGS)"
 	OPTS_ENV+= GOTRACEBACK=crash	# enable core dumps
@@ -68,3 +68,15 @@ vendor-sidh-for-tls: clean
 bench: clean $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) GOMAXPROCS=1 $(GO) test \
 		$(BENCH_OPTS) ./...
+
+bench_csidh: clean make_dirs $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) GOMAXPROCS=1 $(GO) test \
+		$(OPTS) -run="^_" -bench=$(BENCH_NAME) -memprofile mem.prof -benchmem github.com/henrydcase/nobs/dh/csidh
+
+test_drbg: clean make_dirs $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) GOMAXPROCS=1 $(GO) test \
+		$(OPTS) -c -run=. github.com/henrydcase/nobs/drbg
+
+bench_drbg: clean make_dirs $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) GOMAXPROCS=1 $(GO) test \
+		$(OPTS) -run="XXX" -bench=. -benchmem -memprofile=drbg_prof github.com/henrydcase/nobs/drbg

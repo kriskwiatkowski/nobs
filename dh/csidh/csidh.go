@@ -3,12 +3,15 @@ package csidh
 import "io"
 import "crypto/rand"
 
+// OZAPTF
+var buf [8 * limbByteSize]byte
+
 // TODO: this is weird. How do I know loop will end?
 func randFp(fp *Fp) {
+	//	var buf [len(fp) * limbByteSize]byte
 	mask := uint64(1<<(pbits%limbBitSize)) - 1
 	for {
 		*fp = Fp{}
-		var buf [len(fp) * limbByteSize]byte
 		if _, err := io.ReadFull(rand.Reader, buf[:]); err != nil {
 			// OZAPTF: to be re-done (AES_CTR)
 			panic("Can't read random number")
@@ -60,15 +63,14 @@ func (c *PrivateKey) Generate(rand io.Reader) error {
 	}
 
 	for i := 0; i < len(primes); {
-		var buf [64]byte
-		_, err := io.ReadFull(rand, buf[:])
+		_, err := io.ReadFull(rand, c.tmp[:])
 		if err != nil {
 			return err
 		}
 
-		for j, _ := range buf {
-			if int8(buf[j]) <= expMax && int8(buf[j]) >= -expMax {
-				c.e[i>>1] |= int8((buf[j] & 0xf) << uint((i%2)*4))
+		for j, _ := range c.tmp {
+			if int8(c.tmp[j]) <= expMax && int8(c.tmp[j]) >= -expMax {
+				c.e[i>>1] |= int8((c.tmp[j] & 0xf) << uint((i%2)*4))
 				i = i + 1
 				if i == len(primes) {
 					break

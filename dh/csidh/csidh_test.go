@@ -272,31 +272,31 @@ func testProcessTestVectors(t *testing.T) {
 
 func TestProcessTestVectors(t *testing.T) { testProcessTestVectors(t) }
 
+var prv1, prv2 PrivateKey
+
 // Private key generation
 func BenchmarkGeneratePrivate(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		var prv PrivateKey
-		prv.Generate(rng)
+		prv1.Generate(rng)
 	}
 }
 
 // Public key generation from private (group action on empty key)
 func BenchmarkGeneratePublic(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		var prv PrivateKey
 		var pub PublicKey
-		prv.Generate(rng)
-		pub.Generate(&prv)
+		prv1.Generate(rng)
+		pub.Generate(&prv1)
 	}
 }
 
 // Benchmark validation on same key multiple times
 func BenchmarkValidate(b *testing.B) {
-	var pub PublicKey
-	var prv PrivateKey
+	prvBytes := []byte{0xaa, 0x54, 0xe4, 0xd4, 0xd0, 0xbd, 0xee, 0xcb, 0xf4, 0xd0, 0xc2, 0xbc, 0x52, 0x44, 0x11, 0xee, 0xe1, 0x14, 0xd2, 0x24, 0xe5, 0x0, 0xcc, 0xf5, 0xc0, 0xe1, 0x1e, 0xb3, 0x43, 0x52, 0x45, 0xbe, 0xfb, 0x54, 0xc0, 0x55, 0xb2}
+	prv1.Import(prvBytes)
 
-	prv.Generate(rng)
-	pub.Generate(&prv)
+	var pub PublicKey
+	pub.Generate(&prv1)
 
 	for n := 0; n < b.N; n++ {
 		pub.Validate()
@@ -320,18 +320,15 @@ func BenchmarkValidateRandom(b *testing.B) {
 // Benchmark validation on different keys
 func BenchmarkValidateGenerated(b *testing.B) {
 	var pub PublicKey
-	var prv PrivateKey
-
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rng)
-		pub.Generate(&prv)
+		prv1.Generate(rng)
+		pub.Generate(&prv1)
 		pub.Validate()
 	}
 }
 
 func BenchmarkDeriveGenerated(b *testing.B) {
 	var ss [64]uint8
-	var prv1, prv2 PrivateKey
 	var pub1, pub2 PublicKey
 	for n := 0; n < b.N; n++ {
 		prv1.Generate(rng)
@@ -346,7 +343,6 @@ func BenchmarkDeriveGenerated(b *testing.B) {
 
 func BenchmarkDerive(b *testing.B) {
 	var ss [64]uint8
-	var prv1, prv2 PrivateKey
 	var pub1, pub2 PublicKey
 
 	prv1.Generate(rng)

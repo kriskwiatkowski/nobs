@@ -10,6 +10,10 @@ type PublicKey struct {
 // Defines operations on private key
 type PrivateKey struct {
 	e [37]int8
+
+	// Temporary buffer used during key generation. Placed
+	// here to avoid heap memory allocation
+	tmp [64]byte
 }
 
 // PrivateKey
