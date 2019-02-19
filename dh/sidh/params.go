@@ -42,7 +42,7 @@ func init() {
 		OneFp2:  p503.P503OneFp2,
 		HalfFp2: p503.P503HalfFp2,
 		MsgLen:  24,
-		// SIKEp751 provides 128 bit of classical security ([SIKE], 5.1)
+		// SIKEp503 provides 128 bit of classical security ([SIKE], 5.1)
 		KemSize: 16,
 		Bytelen: p503.P503_Bytelen,
 		Op:      p503.FieldOperations(),
