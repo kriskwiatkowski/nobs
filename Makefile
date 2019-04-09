@@ -5,12 +5,14 @@ GO           ?= go
 GOPATH_LOCAL = $(PRJ_DIR)/build/
 GOPATH_DIR   = src/github.com/henrydcase/nobs
 VENDOR_DIR   = tls_vendor
-OPTS         ?=
+OPTS         ?= -v
 NOASM        ?=
 TEST_PATH    ?= ./...
 GOCACHE      ?= off
-BENCH_OPTS   ?= -v -bench=. -run="NonExistingTest" -benchmem
+BENCH_OPTS   ?= -v -bench=. -run="^_" -benchmem
 TEST_PATH    ?= ./...
+DBG 		 = 1
+OPTS_ENV	 =
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
@@ -18,6 +20,15 @@ endif
 
 ifeq ($(PPROF),1)
 	BENCH_OPTS+= -cpuprofile=cpu.out -memprofile=mem0.out
+endif
+
+ifeq ($(DBG),1)
+	DBG_FLAGS+= #-m 	# escape analysis
+	DBG_FLAGS+= -l	# no inline
+	DBG_FLAGS+= -N	# debug symbols
+	#OPTS+=-gcflags=all="$(DBG_FLAGS)"
+	OPTS+=-gcflags "$(DBG_FLAGS)"
+	OPTS_ENV+= GOTRACEBACK=crash	# enable core dumps
 endif
 
 TARGETS ?= \
@@ -37,11 +48,11 @@ make_dirs:
 	cp -rf etc $(GOPATH_LOCAL)/$(GOPATH_DIR)
 
 test: clean make_dirs $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test $(OPTS) -v $(TEST_PATH)
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test $(OPTS) $(TEST_PATH)
 
 cover:
-	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) go test \
-		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) -v $(TEST_PATH)
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test \
+		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) $(TEST_PATH)
 	cat $(GOPATH_LOCAL)/coverage_$(NOASM).txt >> coverage.txt
 
 bench: clean $(addprefix prep-,$(TARGETS))
