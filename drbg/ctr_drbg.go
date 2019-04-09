@@ -14,6 +14,7 @@ package drbg
 
 import (
 	"github.com/henrydcase/nobs/drbg/internal/aes"
+	"github.com/henrydcase/nobs/utils"
 )
 
 // Constants below correspond to AES-256, which is currently
@@ -30,12 +31,15 @@ type CtrDrbg struct {
 	counter    uint
 	strength   uint
 	resistance bool
-	blockEnc   aes.AES
+	blockEnc   aes.IAES
 	tmpBlk     [3 * BlockLen]byte
 }
 
 func NewCtrDrbg() *CtrDrbg {
-	return new(CtrDrbg)
+	if utils.X86.HasAES {
+		return &CtrDrbg{blockEnc: &aes.AESAsm{}}
+	}
+	return &CtrDrbg{blockEnc: &aes.AES{}}
 }
 
 func (c *CtrDrbg) inc() {
