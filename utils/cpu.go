@@ -6,6 +6,12 @@ type x86 struct {
 
 	// Signals support for ADX
 	HasADX bool
+
+	// Signals support for AES
+	HasAES bool
+
+	// Signals support for RDSEED
+	HasRDSEED bool
 }
 
 var X86 x86

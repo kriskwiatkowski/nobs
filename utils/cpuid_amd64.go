@@ -23,7 +23,11 @@ func init() {
 		return
 	}
 
+	_, ecx, _, _ := cpuid(1, 0)
+	X86.HasAES = bitn(ecx, 25)
+
 	_, ebx, _, _ := cpuid(7, 0)
 	X86.HasBMI2 = bitn(ebx, 8)
 	X86.HasADX = bitn(ebx, 19)
+	X86.HasRDSEED = bitn(ebx, 18)
 }

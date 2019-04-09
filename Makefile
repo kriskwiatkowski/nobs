@@ -20,7 +20,7 @@ ifeq ($(PPROF),1)
 	BENCH_OPTS+= -cpuprofile=cpu.out -memprofile=mem0.out
 endif
 
-TARGETS= \
+TARGETS ?= \
 	dh   \
 	drbg \
 	ec \

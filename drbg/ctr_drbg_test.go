@@ -23,7 +23,7 @@ func TestNominal(t *testing.T) {
 		t.FailNow()
 	}
 
-	c.Read(entropy[0:16], data[:])
+	c.ReadWithAdditionalData(entropy[0:16], data[:])
 
 	exp := S2H("16BA361FA14563FB1E8BCF88932F9FA7")
 	if !bytes.Equal(exp, entropy[:]) {
@@ -69,18 +69,34 @@ func TestVector(t *testing.T) {
 		result := make([]byte, len(vectors[i].ReturnedBits))
 		c := NewCtrDrbg()
 		if !c.Init(vectors[i].EntropyInput[:], vectors[i].PersonalizationString) {
-			t.FailNow()
+			t.Error("Init failed")
 		}
 
 		if len(vectors[i].EntropyInputReseed) > 0 {
 			c.Reseed(vectors[i].EntropyInputReseed[:], vectors[i].AdditionalInputReseed[:])
 		}
-		c.Read(result[:], vectors[i].AdditionalInput1)
-		c.Read(result[:], vectors[i].AdditionalInput2)
+		c.ReadWithAdditionalData(result[:], vectors[i].AdditionalInput1)
+		c.ReadWithAdditionalData(result[:], vectors[i].AdditionalInput2)
 
 		if !bytes.Equal(vectors[i].ReturnedBits[:], result[:]) {
-			t.FailNow()
+			t.Errorf("KAT failed \nexp: %X\ngot: %X\n", vectors[i].ReturnedBits, result[:])
 		}
 
+	}
+}
+
+func BenchmarkInit(b *testing.B) {
+	c := NewCtrDrbg()
+	for i := 0; i < b.N; i++ {
+		c.Init(vectors[0].EntropyInput[:], vectors[0].PersonalizationString)
+	}
+}
+
+func BenchmarkRead(b *testing.B) {
+	var result [16 * 10]byte
+	c := NewCtrDrbg()
+	c.Init(vectors[0].EntropyInput[:], vectors[0].PersonalizationString)
+	for i := 0; i < b.N; i++ {
+		c.ReadWithAdditionalData(result[:], vectors[0].AdditionalInput1)
 	}
 }
