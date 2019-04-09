@@ -50,6 +50,12 @@ make_dirs:
 test: clean make_dirs $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test $(OPTS) $(TEST_PATH)
 
+test_csidh: clean make_dirs $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test $(OPTS) github.com/henrydcase/nobs/dh/csidh
+
+test_csidh_bin: clean make_dirs $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test -c $(OPTS) github.com/henrydcase/nobs/dh/csidh
+
 cover:
 	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test \
 		-race -coverprofile=coverage_$(NOASM).txt -covermode=atomic $(OPTS) $(TEST_PATH)
@@ -59,6 +65,10 @@ bench: clean $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
 		$(BENCH_OPTS) $(TEST_PATH)
 
+bench_csidh: clean $(addprefix prep-,$(TARGETS))
+	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
+		$(BENCH_OPTS) github.com/henrydcase/nobs/dh/csidh
+		
 clean:
 	rm -rf $(GOPATH_LOCAL)
 	rm -rf $(VENDOR_DIR)
