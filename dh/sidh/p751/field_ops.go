@@ -12,7 +12,7 @@ import . "github.com/henrydcase/nobs/dh/sidh/internal/isogeny"
 type fp751Ops struct{}
 
 func FieldOperations() FieldOps {
-	return &fp751Ops{}
+	return fp751Ops{}
 }
 
 func (fp751Ops) Add(dest, lhs, rhs *Fp2Element) {

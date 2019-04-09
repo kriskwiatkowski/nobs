@@ -81,7 +81,7 @@ func (c *CurveOperations) CalcCurveParamsEquiv4(cparams *ProjectiveCurveParamete
 	return coefEq
 }
 
-// Helper function for RightToLeftLadder(). Returns A+2C / 4.
+// Helper function for ScalarMul3Pt(). Returns A+2C / 4.
 func (c *CurveOperations) CalcAplus2Over4(cparams *ProjectiveCurveParameters) (ret Fp2Element) {
 	var tmp Fp2Element
 	var op = c.Params.Op
