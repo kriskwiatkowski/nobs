@@ -21,8 +21,8 @@ func decryptBlockAsm(nr int, xk *uint32, dst, src *byte)
 func expandKeyAsm(nr int, key *byte, enc *uint32, dec *uint32)
 
 type AESAsm struct {
-	enc []uint32
-	dec []uint32
+	enc [32 + 28]uint32
+	dec [32 + 28]uint32
 }
 
 func (c *AESAsm) SetKey(key []byte) error {

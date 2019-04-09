@@ -18,6 +18,13 @@ type AES struct {
 	keyLen int
 }
 
+// AES interface
+type IAES interface {
+	SetKey(key []byte) error
+	Encrypt(dst, src []byte)
+	Decrypt(dst, src []byte)
+}
+
 type KeySizeError int
 
 func (k KeySizeError) Error() string {
