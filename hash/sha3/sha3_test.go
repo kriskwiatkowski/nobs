@@ -472,19 +472,3 @@ func ExampleCShake256() {
 	//a90a4c6ca9af2156eba43dc8398279e6b60dcd56fb21837afe6c308fd4ceb05b9dd98c6ee866ca7dc5a39d53e960f400bcd5a19c8a2d6ec6459f63696543a0d8
 	//85e73a72228d08b46515553ca3a29d47df3047e5d84b12d6c2c63e579f4fd1105716b7838e92e981863907f434bfd4443c9e56ea09da998d2f9b47db71988109
 }
-
-func TestXXX(t *testing.T) {
-	var out1, out2 [32]byte
-	h := NewCShake256([]byte("CSHAKE256"), []byte("CustomStrign"))
-
-	h.Write([]byte{0x1, 0x2, 0x3})
-	h.Read(out1[:])
-
-	h.Reset()
-
-	h.Write([]byte{0x1, 0x2, 0x3})
-	h.Read(out2[:])
-
-	fmt.Println(out1)
-	fmt.Println(out2)
-}

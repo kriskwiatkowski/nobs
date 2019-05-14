@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build amd64 386 ppc64le
+// +build amd64 arm64 386 ppc64le
 // +build !appengine
 
 package shake
@@ -49,10 +49,5 @@ func copyOutUnaligned(d *state, buf []byte) {
 	ab := (*[maxRate]uint8)(unsafe.Pointer(&d.a[0]))
 	copy(buf, ab[:])
 }
-
-var (
-	xorIn   = xorInUnaligned
-	copyOut = copyOutUnaligned
-)
 
 const xorImplementationUnaligned = "unaligned"
