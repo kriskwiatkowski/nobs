@@ -131,6 +131,65 @@ func NewCShake256(N, S []byte) *CShake {
 	return newCShake(N, S, rate256, dsbyteCShake)
 }
 
+const (
+	CSHAKE_256 = 0
+	CSHAKE_128 = 1
+	SHAKE_128  = 2
+	SHAKE_256  = 2
+)
+
+func (c *CShake) Init(id int, N, S []byte) {
+	// leftEncode returns max 9 bytes
+	initBlock := make([]byte, 0, 9*2+len(N)+len(S))
+	initBlock = append(initBlock, leftEncode(uint64(len(N)*8))...)
+	initBlock = append(initBlock, N...)
+	initBlock = append(initBlock, leftEncode(uint64(len(S)*8))...)
+	initBlock = append(initBlock, S...)
+
+	switch id {
+	case CSHAKE_256:
+		c.state.rate = rate256
+		c.state.dsbyte = dsbyteCShake
+	}
+
+	c.initBlock = bytepad(initBlock, c.state.rate)
+	c.Write(c.initBlock)
+}
+
+func (cs CShake) CShakeSum(out []byte, in []byte) (n int) {
+	d := cs.state
+	blocks := int(len(in) / d.rate)
+
+	// Reset
+	d.buf = d.storage[:0]
+	d.state = spongeAbsorbing
+	for i, _ := range d.a {
+		d.a[i] = 0
+	}
+
+	// Absorb
+	for i := 0; i < blocks; i++ {
+		xorInUnaligned(&d, in[i*d.rate:(i+1)*d.rate])
+		keccakF1600(&d.a)
+	}
+	d.buf = append(d.buf, in[blocks*d.rate:]...)
+	d.padAndPermute(d.dsbyte)
+
+	// Now, do the squeezing.
+	n = len(out)
+	for len(out) > 0 {
+		n := copy(out[:], d.buf)
+		d.buf = d.buf[n:]
+		out = out[n:]
+
+		// Apply the permutation if we've squeezed the sponge dry.
+		if len(d.buf) == 0 {
+			d.permute()
+		}
+	}
+	return n
+}
+
 // ShakeSum128 writes an arbitrary-length digest of data into hash.
 func ShakeSum128(hash, data []byte) {
 	h := NewShake128()

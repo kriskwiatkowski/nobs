@@ -22,6 +22,11 @@ import (
 	"testing"
 )
 
+var (
+	xorIn   = xorInUnaligned
+	copyOut = copyOutUnaligned
+)
+
 const (
 	testString  = "brekeccakkeccak koax koax"
 	katFilename = "testdata/keccakKats.json.deflate"
@@ -68,7 +73,7 @@ func testUnalignedAndGeneric(t *testing.T, testf func(impl string)) {
 	xorIn, copyOut = xorInGeneric, copyOutGeneric
 	testf("generic")
 	if xorImplementationUnaligned != "generic" {
-		xorIn, copyOut = xorInUnaligned, copyOutUnaligned
+		xorIn, copyOut = xorInGeneric, copyOutGeneric
 		testf("unaligned")
 	}
 	xorIn, copyOut = xorInOrig, copyOutOrig
@@ -336,7 +341,7 @@ func benchmarkShake(b *testing.B, h *CShake, size, num int) {
 	b.StopTimer()
 	h.Reset()
 	data := sequentialBytes(size)
-	d := make([]byte, 32)
+	var d [32]byte
 
 	b.SetBytes(int64(size * num))
 	b.StartTimer()
@@ -346,7 +351,7 @@ func benchmarkShake(b *testing.B, h *CShake, size, num int) {
 		for j := 0; j < num; j++ {
 			h.Write(data)
 		}
-		h.Read(d)
+		h.Read(d[:])
 	}
 }
 
@@ -354,6 +359,53 @@ func BenchmarkShake128_MTU(b *testing.B)  { benchmarkShake(b, NewShake128(), 135
 func BenchmarkShake256_MTU(b *testing.B)  { benchmarkShake(b, NewShake256(), 1350, 1) }
 func BenchmarkShake256_16x(b *testing.B)  { benchmarkShake(b, NewShake256(), 16, 1024) }
 func BenchmarkShake256_1MiB(b *testing.B) { benchmarkShake(b, NewShake256(), 1024, 1024) }
+func BenchmarkCShake256_1MiB(b *testing.B) {
+	benchmarkShake(b, NewCShake256([]byte("ABC"), nil), 1024, 1024)
+}
+
+func BenchmarkCShakeSum(b *testing.B) {
+	//benchmarkShake(b, NewCShake256([]byte("ABC"), nil), 1024, 1024)
+	data := sequentialBytes(1024)
+	var d [32]byte
+
+	//var c CShake
+	//c.Init(CSHAKE_256, )
+	c := NewCShake256([]byte("ABC"), nil)
+	for i := 0; i < b.N; i++ {
+		c.CShakeSum(d[:], data)
+	}
+}
+
+func BenchmarkCShakeSum3(b *testing.B) {
+	//benchmarkShake(b, NewCShake256([]byte("ABC"), nil), 1024, 1024)
+	data := sequentialBytes(1024)
+	var d [32]byte
+
+	c := NewCShake256([]byte("ABC"), nil)
+	for i := 0; i < b.N; i++ {
+		c.Reset()
+		for i := 0; i < 10; i++ {
+			c.Write(data)
+		}
+		c.Read(d[:])
+	}
+}
+
+func BenchmarkCShakeSum4(b *testing.B) {
+	//benchmarkShake(b, NewCShake256([]byte("ABC"), nil), 1024, 1024)
+	data := sequentialBytes(1024)
+	var d [32]byte
+
+	var c CShake //:= NewCShake256([]byte("ABC"), nil)
+	c.Init(CSHAKE_256, []byte("ABC"), nil)
+	for i := 0; i < b.N; i++ {
+		c.Reset()
+		for i := 0; i < 10; i++ {
+			c.Write(data)
+		}
+		c.Read(d[:])
+	}
+}
 
 func Example_sum() {
 	buf := []byte("some data to hash")
@@ -413,4 +465,36 @@ func ExampleCShake256() {
 	//a8db03e71f3e4da5c4eee9d28333cdd355f51cef3c567e59be5beb4ecdbb28f0
 	//a90a4c6ca9af2156eba43dc8398279e6b60dcd56fb21837afe6c308fd4ceb05b9dd98c6ee866ca7dc5a39d53e960f400bcd5a19c8a2d6ec6459f63696543a0d8
 	//85e73a72228d08b46515553ca3a29d47df3047e5d84b12d6c2c63e579f4fd1105716b7838e92e981863907f434bfd4443c9e56ea09da998d2f9b47db71988109
+}
+
+func TestDoubleInit(t *testing.T) {
+	var h1 CShake
+
+	h1.Init(CSHAKE_256, []byte("ABC"), []byte("DEF"))
+	h2 := NewCShake256([]byte("ABC"), []byte("DEF"))
+
+	h1.Write([]byte("FUCKOFF"))
+	h2.Write([]byte("FUCKOFF"))
+
+	var out1, out2 [32]byte
+	h1.Read(out1[:])
+	h2.Read(out2[:])
+
+	if !bytes.Equal(out1[:], out2[:]) {
+		t.FailNow()
+	}
+}
+
+func BenchmarkCShakeSum2(b *testing.B) {
+	var f = []byte{0x02, 0x00}
+	var o1 [32]byte
+	var i1 [449]byte
+
+	var c CShake
+	c.Init(CSHAKE_256, nil, f)
+
+	for i := 0; i < b.N; i++ {
+		c.CShakeSum(o1[:], i1[:])
+	}
+
 }
