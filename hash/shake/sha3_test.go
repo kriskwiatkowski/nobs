@@ -22,6 +22,11 @@ import (
 	"testing"
 )
 
+var (
+	xorIn   = xorInUnaligned
+	copyOut = copyOutUnaligned
+)
+
 const (
 	testString  = "brekeccakkeccak koax koax"
 	katFilename = "testdata/keccakKats.json.deflate"
@@ -68,7 +73,7 @@ func testUnalignedAndGeneric(t *testing.T, testf func(impl string)) {
 	xorIn, copyOut = xorInGeneric, copyOutGeneric
 	testf("generic")
 	if xorImplementationUnaligned != "generic" {
-		xorIn, copyOut = xorInUnaligned, copyOutUnaligned
+		xorIn, copyOut = xorInGeneric, copyOutGeneric
 		testf("unaligned")
 	}
 	xorIn, copyOut = xorInOrig, copyOutOrig
@@ -336,7 +341,7 @@ func benchmarkShake(b *testing.B, h *CShake, size, num int) {
 	b.StopTimer()
 	h.Reset()
 	data := sequentialBytes(size)
-	d := make([]byte, 32)
+	var d [32]byte
 
 	b.SetBytes(int64(size * num))
 	b.StartTimer()
@@ -346,7 +351,7 @@ func benchmarkShake(b *testing.B, h *CShake, size, num int) {
 		for j := 0; j < num; j++ {
 			h.Write(data)
 		}
-		h.Read(d)
+		h.Read(d[:])
 	}
 }
 
@@ -354,6 +359,18 @@ func BenchmarkShake128_MTU(b *testing.B)  { benchmarkShake(b, NewShake128(), 135
 func BenchmarkShake256_MTU(b *testing.B)  { benchmarkShake(b, NewShake256(), 1350, 1) }
 func BenchmarkShake256_16x(b *testing.B)  { benchmarkShake(b, NewShake256(), 16, 1024) }
 func BenchmarkShake256_1MiB(b *testing.B) { benchmarkShake(b, NewShake256(), 1024, 1024) }
+func BenchmarkCShake128_448_16x(b *testing.B) {
+	benchmarkShake(b, NewCShake128([]byte("ABC"), []byte("DEF")), 448, 16)
+}
+func BenchmarkCShake128_1MiB(b *testing.B) {
+	benchmarkShake(b, NewCShake128([]byte("ABC"), []byte("DEF")), 1024, 1024)
+}
+func BenchmarkCShake256_448_16x(b *testing.B) {
+	benchmarkShake(b, NewCShake256([]byte("ABC"), []byte("DEF")), 448, 16)
+}
+func BenchmarkCShake256_1MiB(b *testing.B) {
+	benchmarkShake(b, NewCShake256([]byte("ABC"), []byte("DEF")), 1024, 1024)
+}
 
 func Example_sum() {
 	buf := []byte("some data to hash")

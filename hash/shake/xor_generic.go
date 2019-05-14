@@ -26,3 +26,5 @@ func copyOutGeneric(d *state, b []byte) {
 		b = b[8:]
 	}
 }
+
+const xorImplementationGeneric = "generic"

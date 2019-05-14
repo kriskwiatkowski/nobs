@@ -50,9 +50,4 @@ func copyOutUnaligned(d *state, buf []byte) {
 	copy(buf, ab[:])
 }
 
-var (
-	xorIn   = xorInUnaligned
-	copyOut = copyOutUnaligned
-)
-
 const xorImplementationUnaligned = "unaligned"
