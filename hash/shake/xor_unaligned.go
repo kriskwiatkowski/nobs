@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build amd64 arm64 386 ppc64le
+// +build amd64 386 ppc64le
 // +build !appengine
 
 package shake
 
 import "unsafe"
 
-func xorInUnaligned(d *state, buf []byte) {
+func xorIn(d *state, buf []byte) {
 	bw := (*[maxRate / 8]uint64)(unsafe.Pointer(&buf[0]))
 	n := len(buf)
 	if n >= 72 {
@@ -45,9 +45,7 @@ func xorInUnaligned(d *state, buf []byte) {
 	}
 }
 
-func copyOutUnaligned(d *state, buf []byte) {
+func copyOut(d *state, buf []byte) {
 	ab := (*[maxRate]uint8)(unsafe.Pointer(&d.a[0]))
 	copy(buf, ab[:])
 }
-
-const xorImplementationUnaligned = "unaligned"
