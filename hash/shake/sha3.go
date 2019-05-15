@@ -83,7 +83,7 @@ func (d *state) permute() {
 	case spongeAbsorbing:
 		// If we're absorbing, we need to xor the input into the state
 		// before applying the permutation.
-		xorInUnaligned(d, d.buf)
+		xorIn(d, d.buf)
 		d.buf = d.storage[:0]
 		keccakF1600(&d.a)
 	case spongeSqueezing:
@@ -91,7 +91,7 @@ func (d *state) permute() {
 		// copying more output.
 		keccakF1600(&d.a)
 		d.buf = d.storage[:d.rate]
-		copyOutUnaligned(d, d.buf)
+		copyOut(d, d.buf)
 	}
 }
 
@@ -119,7 +119,7 @@ func (d *state) padAndPermute(dsbyte byte) {
 	d.permute()
 	d.state = spongeSqueezing
 	d.buf = d.storage[:d.rate]
-	copyOutUnaligned(d, d.buf)
+	copyOut(d, d.buf)
 }
 
 // Write absorbs more data into the hash's state. It produces an error
@@ -136,7 +136,7 @@ func (d *state) Write(p []byte) (written int, err error) {
 	for len(p) > 0 {
 		if len(d.buf) == 0 && len(p) >= d.rate {
 			// The fast path; absorb a full "rate" bytes of input and apply the permutation.
-			xorInUnaligned(d, p[:d.rate])
+			xorIn(d, p[:d.rate])
 			p = p[d.rate:]
 			keccakF1600(&d.a)
 		} else {

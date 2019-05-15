@@ -22,11 +22,6 @@ import (
 	"testing"
 )
 
-var (
-	xorIn   = xorInUnaligned
-	copyOut = copyOutUnaligned
-)
-
 const (
 	testString  = "brekeccakkeccak koax koax"
 	katFilename = "testdata/keccakKats.json.deflate"
@@ -68,66 +63,53 @@ type KeccakKats struct {
 	}
 }
 
-func testUnalignedAndGeneric(t *testing.T, testf func(impl string)) {
-	xorInOrig, copyOutOrig := xorIn, copyOut
-	xorIn, copyOut = xorInGeneric, copyOutGeneric
-	testf("generic")
-	if xorImplementationUnaligned != "generic" {
-		xorIn, copyOut = xorInGeneric, copyOutGeneric
-		testf("unaligned")
-	}
-	xorIn, copyOut = xorInOrig, copyOutOrig
-}
-
 // TestKeccakKats tests the SHA-3 and Shake implementations against all the
 // ShortMsgKATs from https://github.com/gvanas/KeccakCodePackage
 // (The testvectors are stored in keccakKats.json.deflate due to their length.)
 func TestKeccakKats(t *testing.T) {
-	testUnalignedAndGeneric(t, func(impl string) {
-		// Read the KATs.
-		deflated, err := os.Open(katFilename)
-		if err != nil {
-			t.Errorf("error opening %s: %s", katFilename, err)
-		}
-		file := flate.NewReader(deflated)
-		dec := json.NewDecoder(file)
-		var katSet KeccakKats
-		err = dec.Decode(&katSet)
-		if err != nil {
-			t.Errorf("error decoding KATs: %s", err)
-		}
+	// Read the KATs.
+	deflated, err := os.Open(katFilename)
+	if err != nil {
+		t.Errorf("error opening %s: %s", katFilename, err)
+	}
+	file := flate.NewReader(deflated)
+	dec := json.NewDecoder(file)
+	var katSet KeccakKats
+	err = dec.Decode(&katSet)
+	if err != nil {
+		t.Errorf("error decoding KATs: %s", err)
+	}
 
-		for algo, v := range testShakes {
-			for _, kat := range katSet.Kats[algo] {
-				N, err := hex.DecodeString(kat.N)
-				if err != nil {
-					t.Errorf("error decoding KAT: %s", err)
-				}
-
-				S, err := hex.DecodeString(kat.S)
-				if err != nil {
-					t.Errorf("error decoding KAT: %s", err)
-				}
-				d := v.constructor(N, S)
-				in, err := hex.DecodeString(kat.Message)
-				if err != nil {
-					t.Errorf("error decoding KAT: %s", err)
-				}
-
-				d.Write(in[:kat.Length/8])
-				out := make([]byte, len(kat.Digest)/2)
-				d.Read(out)
-				got := strings.ToUpper(hex.EncodeToString(out))
-				if got != kat.Digest {
-					t.Errorf("function=%s, implementation=%s, length=%d N:%s\n S:%s\nmessage:\n %s \ngot:\n  %s\nwanted:\n %s",
-						algo, impl, kat.Length, kat.N, kat.S, kat.Message, got, kat.Digest)
-					t.Logf("wanted %+v", kat)
-					t.FailNow()
-				}
-				continue
+	for algo, v := range testShakes {
+		for _, kat := range katSet.Kats[algo] {
+			N, err := hex.DecodeString(kat.N)
+			if err != nil {
+				t.Errorf("error decoding KAT: %s", err)
 			}
+
+			S, err := hex.DecodeString(kat.S)
+			if err != nil {
+				t.Errorf("error decoding KAT: %s", err)
+			}
+			d := v.constructor(N, S)
+			in, err := hex.DecodeString(kat.Message)
+			if err != nil {
+				t.Errorf("error decoding KAT: %s", err)
+			}
+
+			d.Write(in[:kat.Length/8])
+			out := make([]byte, len(kat.Digest)/2)
+			d.Read(out)
+			got := strings.ToUpper(hex.EncodeToString(out))
+			if got != kat.Digest {
+				t.Errorf("function=%s, length=%d N:%s\n S:%s\nmessage:\n %s \ngot:\n  %s\nwanted:\n %s",
+					algo, kat.Length, kat.N, kat.S, kat.Message, got, kat.Digest)
+				t.Logf("wanted %+v", kat)
+				t.FailNow()
+			}
+			continue
 		}
-	})
+	}
 }
 
 // TestKeccak does a basic test of the non-standardized Keccak hash functions.
@@ -158,37 +140,35 @@ func TestKeccak(t *testing.T) {
 // TestUnalignedWrite tests that writing data in an arbitrary pattern with
 // small input buffers.
 func TestUnalignedWrite(t *testing.T) {
-	testUnalignedAndGeneric(t, func(impl string) {
-		buf := sequentialBytes(0x10000)
+	buf := sequentialBytes(0x10000)
 
-		// Same for SHAKE
-		for alg, df := range testShakes {
-			want := make([]byte, 16)
-			got := make([]byte, 16)
-			d := df.constructor([]byte(df.defAlgoName), []byte(df.defCustomStr))
+	// Same for SHAKE
+	for alg, df := range testShakes {
+		want := make([]byte, 16)
+		got := make([]byte, 16)
+		d := df.constructor([]byte(df.defAlgoName), []byte(df.defCustomStr))
 
-			d.Reset()
-			d.Write(buf)
-			d.Read(want)
-			d.Reset()
-			for i := 0; i < len(buf); {
-				// Cycle through offsets which make a 137 byte sequence.
-				// Because 137 is prime this sequence should exercise all corner cases.
-				offsets := [17]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1}
-				for _, j := range offsets {
-					if v := len(buf) - i; v < j {
-						j = v
-					}
-					d.Write(buf[i : i+j])
-					i += j
+		d.Reset()
+		d.Write(buf)
+		d.Read(want)
+		d.Reset()
+		for i := 0; i < len(buf); {
+			// Cycle through offsets which make a 137 byte sequence.
+			// Because 137 is prime this sequence should exercise all corner cases.
+			offsets := [17]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1}
+			for _, j := range offsets {
+				if v := len(buf) - i; v < j {
+					j = v
 				}
-			}
-			d.Read(got)
-			if !bytes.Equal(got, want) {
-				t.Errorf("Unaligned writes, implementation=%s, alg=%s\ngot %q, want %q", impl, alg, got, want)
+				d.Write(buf[i : i+j])
+				i += j
 			}
 		}
-	})
+		d.Read(got)
+		if !bytes.Equal(got, want) {
+			t.Errorf("Unaligned writes, alg=%s\ngot %q, want %q", alg, got, want)
+		}
+	}
 }
 
 /* TODO: To redesign those tests and unlock
@@ -231,26 +211,24 @@ func TestAppendNoRealloc(t *testing.T) {
 // TestSqueezing checks that squeezing the full output a single time produces
 // the same output as repeatedly squeezing the instance.
 func TestSqueezing(t *testing.T) {
-	testUnalignedAndGeneric(t, func(impl string) {
-		for algo, v := range testShakes {
-			d0 := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
-			d0.Write([]byte(testString))
-			ref := make([]byte, 32)
-			d0.Read(ref)
+	for algo, v := range testShakes {
+		d0 := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
+		d0.Write([]byte(testString))
+		ref := make([]byte, 32)
+		d0.Read(ref)
 
-			d1 := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
-			d1.Write([]byte(testString))
-			var multiple []byte
-			for range ref {
-				one := make([]byte, 1)
-				d1.Read(one)
-				multiple = append(multiple, one...)
-			}
-			if !bytes.Equal(ref, multiple) {
-				t.Errorf("%s (%s): squeezing %d bytes one at a time failed", algo, impl, len(ref))
-			}
+		d1 := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
+		d1.Write([]byte(testString))
+		var multiple []byte
+		for range ref {
+			one := make([]byte, 1)
+			d1.Read(one)
+			multiple = append(multiple, one...)
 		}
-	})
+		if !bytes.Equal(ref, multiple) {
+			t.Errorf("%s : squeezing %d bytes one at a time failed", algo, len(ref))
+		}
+	}
 }
 
 // sequentialBytes produces a buffer of size consecutive bytes 0x00, 0x01, ..., used for testing.
