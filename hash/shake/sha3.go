@@ -65,15 +65,15 @@ func (d *state) Reset() {
 	d.buf = d.storage[:0]
 }
 
-func (d *state) clone() *state {
-	ret := *d
+func (d *state) clone(ret *state) {
+	// shallow copy
+	*ret = *d
+	// deep copy for a buf
 	if ret.state == spongeAbsorbing {
-		ret.buf = ret.storage[:len(ret.buf)]
+		ret.buf = ret.storage[:len(d.buf)]
 	} else {
-		ret.buf = ret.storage[d.rate-cap(d.buf) : d.rate]
+		ret.buf = ret.storage[d.rate-len(d.buf) : d.rate]
 	}
-
-	return &ret
 }
 
 // permute applies the KeccakF-1600 permutation. It handles
@@ -187,7 +187,8 @@ func (d *state) Read(out []byte) (n int, err error) {
 func (d *state) Sum(in []byte) []byte {
 	// Make a copy of the original hash so that caller can keep writing
 	// and summing.
-	dup := d.clone()
+	var dup state
+	d.clone(&dup)
 	hash := make([]byte, dup.outputLen)
 	dup.Read(hash)
 	return append(in, hash...)

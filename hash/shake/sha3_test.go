@@ -284,6 +284,28 @@ func TestClone(t *testing.T) {
 	}
 }
 
+// Checks wether reset works correctly after clone
+func TestCloneAndReset(t *testing.T) {
+	// Shake 256, uses SHA-3 with rate = 136
+	d1 := NewShake256()
+	buf1 := make([]byte, 28, 28)
+	buf2 := make([]byte, 28, 28)
+	d1.Write([]byte{0xcc})
+	// Reading x bytes where x<168-136. This makes capability
+	// of the state buffer shorter.
+	d1.Read(buf1)
+	// This will crash if sha-3 code uses cap() instead
+	// of len() when calculating length of state buffer
+	d2 := d1.Clone()
+	d2.Reset()
+	d2.Write([]byte{0xcc})
+	d2.Read(buf2)
+
+	if !bytes.Equal(buf1, buf2) {
+		t.Error("Different value when reading after reset")
+	}
+}
+
 // BenchmarkPermutationFunction measures the speed of the permutation function
 // with no input data.
 func BenchmarkPermutationFunction(b *testing.B) {

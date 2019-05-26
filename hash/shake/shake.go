@@ -86,9 +86,11 @@ func (c *CShake) Reset() {
 
 // Clone returns copy of a cSHAKE context within its current state.
 func (c *CShake) Clone() CShake {
-	b := make([]byte, len(c.initBlock))
-	copy(b, c.initBlock)
-	return CShake{state: *c.clone(), initBlock: b}
+	var ret CShake
+	c.clone(&ret.state)
+	ret.initBlock = make([]byte, len(c.initBlock))
+	copy(ret.initBlock, c.initBlock)
+	return ret
 }
 
 // NewShake128 creates a new SHAKE128 variable-output-length CShake.
