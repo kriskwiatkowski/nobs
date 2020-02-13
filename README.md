@@ -1,24 +1,7 @@
-# NOBS
+# NOBS Crypto 
 
-Cryptographic implementation of Post-Quantum primitives in Go.
-
-## Implemented primitives
-* dh/
-    - SIDH
-* ec/
-    - x448
-* hash/
-    - cSHAKE (sha3 coppied from "golang.org/x/crypto")
-    - SM3
-* rand/
-    - CTR_DRBG with AES256 (NIST SP800-90A)
-* kem/
-    - SIKE: version 3 (as per paper on sike.org)
-    
-## Testing
-```
-make test
-```
+Cryptographic implementation of quantum-resistant primitives in Go.
 
 ## Licence
-WTFPL except if specified differently in subfolders
+
+(WTFPLv2)[https://en.wikipedia.org/wiki/WTFPL] except if specified differently in the subfolders.
