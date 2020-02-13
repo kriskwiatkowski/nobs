@@ -1,6 +1,6 @@
-# nobs-j-crypto
+# NOBS
 
-Crypto primitives implementation in Go.
+Cryptographic implementation of Post-Quantum primitives in Go.
 
 ## Implemented primitives
 * dh/
