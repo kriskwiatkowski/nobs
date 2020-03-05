@@ -2,6 +2,7 @@ sudo: required
 language: go
 go:
   - 1.13.x
+  - 1.14.x
   - master
 
 matrix:
@@ -12,15 +13,25 @@ matrix:
         - make clean
         - NOASM=0 make test
         - NOASM=1 make test
-        - NOASM=0 make cover
-        - NOASM=1 make cover
-    - name: "Go on ARM64"
+    - name: "Go 1.13 on ARM64"
       services: docker
       os: linux
       script:
         - docker run --rm --privileged multiarch/qemu-user-static:register --reset
-        - docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go" /bin/bash -c "NOASM=0 make test"
-        - docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go" /bin/bash -c "NOASM=1 make test"
+        - docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go-1.13" /bin/bash -c "NOASM=0 make test"
+        - docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go-1.13" /bin/bash -c "NOASM=1 make test"
+    - name: "Go 1.14 on ARM64"
+      services: docker
+      os: linux
+      script:
+        - docker run --rm --privileged multiarch/qemu-user-static:register --reset
+        - docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go-1.14" /bin/bash -c "NOASM=0 make test"
+        - docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go-1.14" /bin/bash -c "NOASM=1 make test"
+    - name: "Coverage"
+      os: linux
+      script:
+        - NOASM=0 make cover
+        - NOASM=1 make cover
 
 
 after_script:
