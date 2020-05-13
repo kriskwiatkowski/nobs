@@ -39,14 +39,13 @@ func testFp512Mul3Nominal(t *testing.T) {
 }
 
 // Check if mul512 produces result
-// z = x*y mod 2^512
+// z = x*y mod 2^512.
 func TestFp512Mul3_Nominal(t *testing.T) {
 	hasBMI2 = false
 	testFp512Mul3Nominal(t)
 
 	resetCPUFeatures()
 	testFp512Mul3Nominal(t)
-
 }
 
 func TestAddRdcRandom(t *testing.T) {
@@ -78,26 +77,26 @@ func TestAddRdcNominal(t *testing.T) {
 
 	tmp := oneFp512
 	addRdc(&res, &tmp, &p)
-	if !ceq512(&res, &tmp) {
+	if !eqFp(&res, &tmp) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 
 	tmp = zeroFp512
 	addRdc(&res, &p, &p)
-	if !ceq512(&res, &p) {
+	if !eqFp(&res, &p) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 
 	tmp = fp{1, 1, 1, 1, 1, 1, 1, 1}
 	addRdc(&res, &p, &tmp)
-	if !ceq512(&res, &tmp) {
+	if !eqFp(&res, &tmp) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 
 	tmp = fp{1, 1, 1, 1, 1, 1, 1, 1}
 	exp := fp{2, 2, 2, 2, 2, 2, 2, 2}
 	addRdc(&res, &tmp, &tmp)
-	if !ceq512(&res, &exp) {
+	if !eqFp(&res, &exp) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 }
@@ -168,19 +167,19 @@ func TestCswap(t *testing.T) {
 
 	arg1cpy := arg1
 	cswap512(&arg1, &arg2, 0)
-	if !ceq512(&arg1, &arg1cpy) {
+	if !eqFp(&arg1, &arg1cpy) {
 		t.Error("cswap swapped")
 	}
 
 	arg1cpy = arg1
 	cswap512(&arg1, &arg2, 1)
-	if ceq512(&arg1, &arg1cpy) {
+	if eqFp(&arg1, &arg1cpy) {
 		t.Error("cswap didn't swapped")
 	}
 
 	arg1cpy = arg1
 	cswap512(&arg1, &arg2, 0xF2)
-	if ceq512(&arg1, &arg1cpy) {
+	if eqFp(&arg1, &arg1cpy) {
 		t.Error("cswap didn't swapped")
 	}
 }
@@ -191,7 +190,7 @@ func TestSubRdc(t *testing.T) {
 	// 1 - 1 mod P
 	tmp := oneFp512
 	subRdc(&res, &tmp, &tmp)
-	if !ceq512(&res, &zeroFp512) {
+	if !eqFp(&res, &zeroFp512) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 	zero(&res)
@@ -201,7 +200,7 @@ func TestSubRdc(t *testing.T) {
 	exp[0]--
 
 	subRdc(&res, &zeroFp512, &oneFp512)
-	if !ceq512(&res, &exp) {
+	if !eqFp(&res, &exp) {
 		t.Errorf("Wrong value\n%X\n%X", res, exp)
 	}
 	zero(&res)
@@ -210,13 +209,13 @@ func TestSubRdc(t *testing.T) {
 	pMinusOne := p
 	pMinusOne[0]--
 	subRdc(&res, &p, &pMinusOne)
-	if !ceq512(&res, &oneFp512) {
+	if !eqFp(&res, &oneFp512) {
 		t.Errorf("Wrong value\n[%X != %X]", res, oneFp512)
 	}
 	zero(&res)
 
 	subRdc(&res, &p, &oneFp512)
-	if !ceq512(&res, &pMinusOne) {
+	if !eqFp(&res, &pMinusOne) {
 		t.Errorf("Wrong value\n[%X != %X]", res, pMinusOne)
 	}
 }
@@ -245,28 +244,28 @@ func testMulRdc(t *testing.T) {
 	// 0*0
 	tmp := zeroFp512
 	mulRdc(&res, &tmp, &tmp)
-	if !ceq512(&res, &tmp) {
+	if !eqFp(&res, &tmp) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 
 	// 1*m1 == m1
 	zero(&res)
 	mulRdc(&res, &m1, &one)
-	if !ceq512(&res, &m1) {
+	if !eqFp(&res, &m1) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 
 	// m1*m2 < p
 	zero(&res)
 	mulRdc(&res, &m1, &m2)
-	if !ceq512(&res, &m1m2) {
+	if !eqFp(&res, &m1m2) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 
 	// m1*m1 > p
 	zero(&res)
 	mulRdc(&res, &m1, &m1)
-	if !ceq512(&res, &m1m1) {
+	if !eqFp(&res, &m1m1) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 }
@@ -300,13 +299,13 @@ func TestModExp(t *testing.T) {
 		// Perform modexp with our implementation
 		modExpRdc512(&resFp, &baseFp, &expFp)
 
-		if !ceq512(&resFp, &resFpExp) {
+		if !eqFp(&resFp, &resFpExp) {
 			t.Errorf("Wrong value\n%X!=%X", resFp, intGetU64(&resExp))
 		}
 	}
 }
 
-// Test uses Euler's Criterion
+// Test uses Euler's Criterion.
 func TestIsNonQuadRes(t *testing.T) {
 	var n, nMont big.Int
 	var pm1o2, rawP big.Int
@@ -318,7 +317,7 @@ func TestIsNonQuadRes(t *testing.T) {
 	rawP.SetString("0x65b48e8f740f89bffc8ab0d15e3e4c4ab42d083aedc88c425afbfcc69322c9cda7aac6c567f35507516730cc1f0b4f25c2721bf457aca8351b81b90533c6c87b", 0)
 
 	// There is 641 quadratic residues in this range
-	for i := uint64(1); i < 1000; i++ {
+	for i := uint64(1); i < uint64(numIter); i++ {
 		n.SetUint64(i)
 		n.Exp(&n, &pm1o2, &rawP)
 		// exp == 1 iff n is quadratic non-residue

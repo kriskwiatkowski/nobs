@@ -4,6 +4,9 @@ package csidh
 
 import "math/bits"
 
+// mul576 implements schoolbook multiplication of
+// 64x512-bit integer. Returns result modulo 2^512.
+// r = m1*m2
 func mul512(r, m1 *fp, m2 uint64) {
 	var c, h, l uint64
 
@@ -33,10 +36,14 @@ func mul512(r, m1 *fp, m2 uint64) {
 	r[6], c = bits.Add64(l, c, 0)
 	c = h + c
 
-	h, l = bits.Mul64(m2, m1[7])
+	_, l = bits.Mul64(m2, m1[7])
 	r[7], _ = bits.Add64(l, c, 0)
 }
 
+// mul576 implements schoolbook multiplication of
+// 64x512-bit integer. Returns 576-bit result of
+// multiplication.
+// r = m1*m2
 func mul576(r *[9]uint64, m1 *fp, m2 uint64) {
 	var c, h, l uint64
 
@@ -72,6 +79,9 @@ func mul576(r *[9]uint64, m1 *fp, m2 uint64) {
 	r[8] += c
 }
 
+// cswap512 implements constant time swap operation.
+// If choice = 0, leave x,y unchanged. If choice = 1, set x,y = y,x.
+// If choice is neither 0 nor 1 then behaviour is undefined.
 func cswap512(x, y *fp, choice uint8) {
 	var tmp uint64
 	mask64 := 0 - uint64(choice)
@@ -81,10 +91,6 @@ func cswap512(x, y *fp, choice uint8) {
 		x[i] = tmp ^ x[i]
 		y[i] = tmp ^ y[i]
 	}
-}
-
-func mul(res, x, y *fp) {
-	mulGeneric(res, x, y)
 }
 
 // mulRdc performs montgomery multiplication r = x * y mod P.

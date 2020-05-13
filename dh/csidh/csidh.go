@@ -7,7 +7,7 @@ import (
 // 511-bit number representing prime field element GF(p)
 type fp [numWords]uint64
 
-// Represents projective point on elliptic curve E over fp
+// Represents projective point on elliptic curve E over GF(p)
 type point struct {
 	x fp
 	z fp
@@ -27,17 +27,20 @@ type fpRngGen struct {
 // Defines operations on public key
 type PublicKey struct {
 	fpRngGen
-	// Montgomery coefficient: represents y^2 = x^3 + Ax^2 + x
+	// Montgomery coefficient A from GF(p) of the elliptic curve
+	// y^2 = x^3 + Ax^2 + x.
 	a fp
 }
 
 // Defines operations on private key
 type PrivateKey struct {
 	fpRngGen
+	// private key is a set of integers randomly
+	// each sampled from a range [-5, 5].
 	e [PrivateKeySize]int8
 }
 
-// randFp generates random element from Fp
+// randFp generates random element from Fp.
 func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 	mask := uint64(1<<(pbits%limbBitSize)) - 1
 	for {
@@ -60,23 +63,31 @@ func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 	}
 }
 
-func cofactorMultiples(p *point, a *coeff, halfL, halfR int, order *fp) (bool, bool) {
+// cofactorMul helper implements batch cofactor multiplication as described
+// in the ia.cr/2018/383 (algo. 3). Returns tuple of two booleans, first indicates
+// if function has finished successfully. In case first return value is true,
+// second return value indicates if curve represented by coffactor 'a' is
+// supersingular.
+// Implemenation uses divide-and-conquer strategy and recursion in order to
+// speed up calculation of Q_i = [(p+1)/l_i] * P.
+// Implementation is not constant time, but it operates on public data only.
+func cofactorMul(p *point, a *coeff, halfL, halfR int, order *fp) (bool, bool) {
 	var Q point
 	var r1, d1, r2, d2 bool
-
 	if (halfR - halfL) == 1 {
+		// base case
 		if !p.z.isZero() {
 			var tmp = fp{primes[halfL]}
-			xMul512(p, p, a, &tmp)
+			xMul(p, p, a, &tmp)
 
 			if !p.z.isZero() {
-				// order does not divide p+1
-				return false, true
+				// order does not divide p+1 -> ordinary curve
+				return true, false
 			}
 
 			mul512(order, order, primes[halfL])
-			if sub512(&tmp, &fourSqrtP, order) == 1 {
-				// order > 4*sqrt(p) -> supersingular
+			if isLess(&fourSqrtP, order) {
+				// order > 4*sqrt(p) -> supersingular curve
 				return true, true
 			}
 		}
@@ -86,21 +97,27 @@ func cofactorMultiples(p *point, a *coeff, halfL, halfR int, order *fp) (bool, b
 	// perform another recursive step
 	mid := halfL + ((halfR - halfL + 1) / 2)
 	var mulL, mulR = fp{1}, fp{1}
+	// compute u = primes_1 * ... * primes_m
 	for i := halfL; i < mid; i++ {
 		mul512(&mulR, &mulR, primes[i])
 	}
+	// compute v = primes_m+1 * ... * primes_n
 	for i := mid; i < halfR; i++ {
 		mul512(&mulL, &mulL, primes[i])
 	}
 
-	xMul512(&Q, p, a, &mulR)
-	xMul512(p, p, a, &mulL)
+	// calculate Q_i
+	xMul(&Q, p, a, &mulR)
+	xMul(p, p, a, &mulL)
 
-	r1, d1 = cofactorMultiples(&Q, a, mid, halfR, order)
-	r2, d2 = cofactorMultiples(p, a, halfL, mid, order)
-	return r1 || r2, d1 || d2
+	d1, r1 = cofactorMul(&Q, a, mid, halfR, order)
+	d2, r2 = cofactorMul(p, a, halfL, mid, order)
+	return d1 || d2, r1 || r2
 }
 
+// groupAction evaluates group action of prv.e on a Montgomery
+// curve represented by coefficient pub.A.
+// This is implementation of algorithm 2 from ia.cr/2018/383.
 func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 	var k [2]fp
 	var e [2][primeCount]uint8
@@ -140,7 +157,7 @@ func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 			continue
 		}
 
-		xMul512(&P, &P, &A, &k[sign])
+		xMul(&P, &P, &A, &k[sign])
 		done[sign] = true
 
 		for i, v := range primes {
@@ -154,9 +171,9 @@ func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 					}
 				}
 
-				xMul512(&K, &P, &A, &cof)
+				xMul(&K, &P, &A, &cof)
 				if !K.z.isZero() {
-					isom(&P, &A, &K, v)
+					xIso(&P, &A, &K, v)
 					e[sign][i] = e[sign][i] - 1
 					if e[sign][i] == 0 {
 						mul512(&k[sign], &k[sign], primes[i])
@@ -225,7 +242,7 @@ func GeneratePrivateKey(key *PrivateKey, rng io.Reader) error {
 
 // Public key operations
 
-// Assumes key is in Montgomery domain
+// Assumes key is in Montgomery domain.
 func (c *PublicKey) Import(key []byte) bool {
 	if len(key) != numWords*limbByteSize {
 		return false
@@ -238,7 +255,7 @@ func (c *PublicKey) Import(key []byte) bool {
 	return true
 }
 
-// Assumes key is exported as encoded in Montgomery domain
+// Assumes key is exported as encoded in Montgomery domain.
 func (c *PublicKey) Export(out []byte) bool {
 	if len(out) != numWords*limbByteSize {
 		return false
@@ -251,44 +268,45 @@ func (c *PublicKey) Export(out []byte) bool {
 	return true
 }
 
-func (c *PublicKey) reset() {
-	for i := range c.a {
-		c.a[i] = 0
-	}
-}
-
 func GeneratePublicKey(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
-	pub.reset()
+	for i := range pub.a {
+		pub.a[i] = 0
+	}
 	groupAction(pub, prv, rng)
 }
 
-// Validate does public key validation. It returns true if
-// a 'pub' is a valid cSIDH public key, otherwise false.
+// Validate returns true if 'pub' is a valid cSIDH public key,
+// otherwise false.
+// More precisely, the function verifies that curve
+//            y^2 = x^3 + pub.a * x^2 + x
+// is supersingular.
 func Validate(pub *PublicKey, rng io.Reader) bool {
 	// Check if in range
 	if !isLess(&pub.a, &p) {
 		return false
 	}
 
-	// j-invariant for montgomery curves is something like
-	// j = (256*(A^3-3)^3)/(A^2 - 4), so any |A| = 2 is invalid
+	// Check if pub represents a smooth Montgomery curve.
 	if pub.a.equal(&two) || pub.a.equal(&twoNeg) {
 		return false
 	}
 
-	// P must have big enough order to prove supersingularity. The
-	// probability that this loop will be repeated is negligible.
+	// Check if pub represents a supersingular curve.
 	for {
 		var P point
 		var A = point{pub.a, one}
 
+		// Randomly chosen P must have big enough order to check
+		// supersingularity. Probability of random P having big
+		// enough order is very high, as proven by W.Castryck et
+		// al. (ia.cr/2018/383, ch 5)
 		pub.randFp(&P.x, rng)
 		P.z = one
 
 		xDbl(&P, &P, &A)
 		xDbl(&P, &P, &A)
 
-		res, done := cofactorMultiples(&P, &coeff{A.x, A.z}, 0, len(primes), &fp{1})
+		done, res := cofactorMul(&P, &coeff{A.x, A.z}, 0, len(primes), &fp{1})
 		if done {
 			return res
 		}
@@ -297,6 +315,9 @@ func Validate(pub *PublicKey, rng io.Reader) bool {
 
 // DeriveSecret computes a cSIDH shared secret. If successful, returns true
 // and fills 'out' with shared secret. Function returns false in case 'pub' is invalid.
+// More precisely, shared secret is a Montgomery coefficient A of a secret
+// curve y^2 = x^3 + Ax^2 + x, computed by applying action of a prv.e
+// on a curve represented by pub.a.
 func DeriveSecret(out *[64]byte, pub *PublicKey, prv *PrivateKey, rng io.Reader) bool {
 	if !Validate(pub, rng) {
 		return false

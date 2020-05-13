@@ -6,7 +6,6 @@ import (
 	mrand "math/rand"
 )
 
-// Commonly used variables
 var (
 	// Number of interations
 	numIter = 10
@@ -16,6 +15,8 @@ var (
 	zeroFp512 = fp{}
 	// One in fp
 	oneFp512 = fp{1, 0, 0, 0, 0, 0, 0, 0}
+	// file with KAT vectors
+	katFile = "testdata/csidh_testvectors.dat"
 )
 
 // Converts dst to Montgomery if "toMont==true" or from Montgomery domain otherwise.
@@ -41,14 +42,14 @@ func fp2S(v fp) string {
 	return str
 }
 
-// zeroize fp
+// zeroize fp.
 func zero(v *fp) {
 	for i := range *v {
 		v[i] = 0
 	}
 }
 
-// returns random value in a range (0,p)
+// returns random value in a range (0,p).
 func randomFp() fp {
 	var u fp
 	for i := 0; i < 8; i++ {
@@ -57,25 +58,8 @@ func randomFp() fp {
 	return u
 }
 
-// x<y: <0
-// x>y: >0
-// x==y: 0
-func cmp512(x, y *fp) int {
-	if len(*x) == len(*y) {
-		for i := len(*x) - 1; i >= 0; i-- {
-			if x[i] < y[i] {
-				return -1
-			} else if x[i] > y[i] {
-				return 1
-			}
-		}
-		return 0
-	}
-	return len(*x) - len(*y)
-}
-
-// return x==y for fp
-func ceqFp(l, r *fp) bool {
+// return x==y for fp.
+func eqFp(l, r *fp) bool {
 	for idx := range l {
 		if l[idx] != r[idx] {
 			return false
@@ -84,19 +68,14 @@ func ceqFp(l, r *fp) bool {
 	return true
 }
 
-// return x==y for point
+// return x==y for point.
 func ceqpoint(l, r *point) bool {
-	return ceqFp(&l.x, &r.x) && ceqFp(&l.z, &r.z)
-}
-
-// return x==y
-func ceq512(x, y *fp) bool {
-	return cmp512(x, y) == 0
+	return eqFp(&l.x, &r.x) && eqFp(&l.z, &r.z)
 }
 
 // Converts src to big.Int. Function assumes that src is a slice of uint64
 // values encoded in little-endian byte order.
-func intSetU64(dst *big.Int, src []uint64) *big.Int {
+func intSetU64(dst *big.Int, src []uint64) {
 	var tmp big.Int
 
 	dst.SetUint64(0)
@@ -105,7 +84,6 @@ func intSetU64(dst *big.Int, src []uint64) *big.Int {
 		tmp.Lsh(&tmp, uint(i*64))
 		dst.Add(dst, &tmp)
 	}
-	return dst
 }
 
 // Converts src to an array of uint64 values encoded in little-endian
@@ -140,7 +118,7 @@ func toNormX(point *point) big.Int {
 	return bigDnt
 }
 
-// Converts string to fp element in Montgomery domain of cSIDH-512
+// Converts string to fp element in Montgomery domain of cSIDH-512.
 func toFp(num string) fp {
 	var tmp big.Int
 	var ok bool

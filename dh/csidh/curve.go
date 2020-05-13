@@ -1,10 +1,10 @@
 package csidh
 
-// Implements differential arithmetic in P^1 for montgomery
-// curves a mapping: x(P),x(Q),x(P-Q) -> x(P+Q)
-// PaQ = P + Q
+// xAdd implements differential arithmetic in P^1 for Montgomery
+// curves E(x): x^3 + A*x^2 + x by using x-coordinate only arithmetic.
+//    x(PaQ) = x(P) + x(Q) by using x(P-Q)
 // This algorithms is correctly defined only for cases when
-// P!=inf, Q!=inf, P!=Q and P!=-Q
+// P!=inf, Q!=inf, P!=Q and P!=-Q.
 func xAdd(PaQ, P, Q, PdQ *point) {
 	var t0, t1, t2, t3 fp
 	addRdc(&t0, &P.x, &P.z)
@@ -21,8 +21,10 @@ func xAdd(PaQ, P, Q, PdQ *point) {
 	mulRdc(&PaQ.z, &PdQ.x, &t3)
 }
 
-// Q = 2*P on a montgomery curve E(x): x^3 + A*x^2 + x
-// It is correctly defined for all P != inf
+// xDbl implements point doubling on a Montgomery curve
+// E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
+//   x(Q) = [2]*x(P)
+// It is correctly defined for all P != inf.
 func xDbl(Q, P, A *point) {
 	var t0, t1, t2 fp
 	addRdc(&t0, &P.x, &P.z)
@@ -40,8 +42,11 @@ func xDbl(Q, P, A *point) {
 	mulRdc(&Q.z, &t0, &t2)
 }
 
-// PaP = 2*P; PaQ = P+Q
-// PaP can override P and PaQ can override Q
+// xDblAdd implements combined doubling of point P
+// and addition of points P and Q on a Montgomery curve
+// E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
+//   x(PaP) = x(2*P)
+//   x(PaQ) = x(P+Q)
 func xDblAdd(PaP, PaQ, P, Q, PdQ *point, A24 *coeff) {
 	var t0, t1, t2 fp
 
@@ -67,7 +72,7 @@ func xDblAdd(PaP, PaQ, P, Q, PdQ *point, A24 *coeff) {
 	mulRdc(&PaQ.x, &PaQ.x, &PdQ.z)
 }
 
-// Swap P1 with P2 in constant time. The 'choice'
+// cswappoint swaps P1 with P2 in constant time. The 'choice'
 // parameter must have a value of either 1 (results
 // in swap) or 0 (results in no-swap).
 func cswappoint(P1, P2 *point, choice uint8) {
@@ -75,13 +80,11 @@ func cswappoint(P1, P2 *point, choice uint8) {
 	cswap512(&P1.z, &P2.z, choice)
 }
 
-// A uniform Montgomery ladder. co is A coefficient of
-// x^3 + A*x^2 + x curve. k MUST be > 0
+// xMul implements point multiplication with left-to-right Montgomery
+// adder. co is A coefficient of x^3 + A*x^2 + x curve. k must be > 0
 //
-// kP = [k]P. xM=x(0 + k*P)
-//
-// non-constant time.
-func xMul512(kP, P *point, co *coeff, k *fp) {
+// Non-constant time!
+func xMul(kP, P *point, co *coeff, k *fp) {
 	var A24 coeff
 	var Q point
 	var j uint
@@ -107,16 +110,23 @@ func xMul512(kP, P *point, co *coeff, k *fp) {
 	for i := j; i > 0; {
 		i--
 		bit := uint8(k[i>>6] >> (i & 63) & 1)
-		swap := prevBit ^ bit
-		prevBit = bit
-		cswappoint(&Q, &R, swap)
+		cswappoint(&Q, &R, prevBit^bit)
 		xDblAdd(&Q, &R, &Q, &R, P, &A24)
+		prevBit = bit
 	}
 	cswappoint(&Q, &R, uint8(k[0]&1))
 	*kP = Q
 }
 
-func isom(img *point, co *coeff, kern *point, order uint64) {
+// xIso computes the isogeny with kernel point kern of a given order
+// kernOrder. Returns the new curve coefficient co and the image img.
+//
+// During computation function switches between Montgomery and twisted
+// Edwards curves in order to compute image curve parameters faster.
+// This technique is described by Meyer and Reith in ia.cr/2018/782.
+//
+// Non-constant time.
+func xIso(img *point, co *coeff, kern *point, kernOrder uint64) {
 	var t0, t1, t2, S, D fp
 	var Q, prod point
 	var coEd coeff
@@ -145,8 +155,8 @@ func isom(img *point, co *coeff, kern *point, order uint64) {
 
 	xDbl(&M[1], kern, &point{x: co.a, z: co.c})
 
-	// TODO: Not constant time.
-	for i := uint64(1); i < order>>1; i++ {
+	// NOTE: Not constant time.
+	for i := uint64(1); i < kernOrder>>1; i++ {
 		if i >= 2 {
 			xAdd(&M[i%3], &M[(i-1)%3], kern, &M[(i-2)%3])
 		}
@@ -160,7 +170,6 @@ func isom(img *point, co *coeff, kern *point, order uint64) {
 		mulRdc(&Q.x, &Q.x, &t2)
 		subRdc(&t2, &t0, &t1)
 		mulRdc(&Q.z, &Q.z, &t2)
-
 	}
 
 	mulRdc(&Q.x, &Q.x, &Q.x)
@@ -168,9 +177,9 @@ func isom(img *point, co *coeff, kern *point, order uint64) {
 	mulRdc(&img.x, &img.x, &Q.x)
 	mulRdc(&img.z, &img.z, &Q.z)
 
-	// coEd.a^order and coEd.c^order
-	modExpRdc64(&coEd.a, &coEd.a, order)
-	modExpRdc64(&coEd.c, &coEd.c, order)
+	// coEd.a^kernOrder and coEd.c^kernOrder
+	modExpRdc64(&coEd.a, &coEd.a, kernOrder)
+	modExpRdc64(&coEd.c, &coEd.c, kernOrder)
 
 	// prod^8
 	mulRdc(&prod.x, &prod.x, &prod.x)
@@ -190,7 +199,7 @@ func isom(img *point, co *coeff, kern *point, order uint64) {
 	addRdc(&co.a, &co.a, &co.a)
 }
 
-// evaluates x^3 + Ax^2 + x
+// montEval evaluates x^3 + Ax^2 + x.
 func montEval(res, A, x *fp) {
 	var t fp
 

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Actual test implementation
+// Actual test implementation.
 func TestXAdd(t *testing.T) {
 	var P, Q, PdQ point
 	var PaQ point
@@ -180,14 +180,14 @@ func TestXMul(t *testing.T) {
 	checkXMul := func() {
 		var kP point
 
-		xMul512(&kP, &P, &co, &k)
+		xMul(&kP, &P, &co, &k)
 		retKP := toNormX(&kP)
 		if expKP.Cmp(&retKP) != 0 {
 			t.Errorf("\nExp: %s\nGot: %s", expKP.Text(16), retKP.Text(16))
 		}
 
 		// Check if first and second argument can overlap
-		xMul512(&P, &P, &co, &k)
+		xMul(&P, &P, &co, &k)
 		retKP = toNormX(&P)
 		if expKP.Cmp(&retKP) != 0 {
 			t.Errorf("\nExp: %s\nGot: %s", expKP.Text(16), retKP.Text(16))
@@ -261,13 +261,13 @@ func TestMappointHardcoded3(t *testing.T) {
 	var expP = point{
 		x: fp{0x91aba9b39f280495, 0xfbd8ea69d2990aeb, 0xb03e1b8ed7fe3dba, 0x3d30a41499f08998, 0xb15a42630de9c606, 0xa7dd487fef16f5c8, 0x8673948afed8e968, 0x57ecc8710004cd4d},
 		z: fp{0xce8819869a942526, 0xb98ca2ff79ef8969, 0xd49c9703743a1812, 0x21dbb090f9152e03, 0xbabdcac831b1adea, 0x8cee90762baa2ddd, 0xa0dd2ddcef809d96, 0x1de2a8887a32f19b}}
-	isom(&P, &A, &K, k)
-	if !ceqFp(&P.x, &expP.x) || !ceqFp(&P.z, &expP.z) {
+	xIso(&P, &A, &K, k)
+	if !eqFp(&P.x, &expP.x) || !eqFp(&P.z, &expP.z) {
 		normP := toNormX(&P)
 		normPExp := toNormX(&expP)
 		t.Errorf("P != expP [\n %s != %s\n]", normP.Text(16), normPExp.Text(16))
 	}
-	if !ceqFp(&A.a, &expA.a) || !ceqFp(&A.c, &expA.c) {
+	if !eqFp(&A.a, &expA.a) || !eqFp(&A.c, &expA.c) {
 		t.Errorf("A != expA %X %X", A.a[0], expA.a[0])
 	}
 }
@@ -291,13 +291,13 @@ func TestMappointHardcoded5(t *testing.T) {
 		x: fp{0x3b75fc94b2a6df2d, 0x96d53dc9b0e867a0, 0x22e87202421d274e, 0x30a361440697ee1a, 0x8b52ee078bdbddcd, 0x64425d500e6b934d, 0xf47d1f568f6df391, 0x5d9d3607431395ab},
 		z: fp{0x746e02dafa040976, 0xcd408f2cddbf3a8e, 0xf643354e0e13a93f, 0x7c39ed96ce9a5e29, 0xfcdf26f1a1a550ca, 0x2fc8aafc4ca0a559, 0x5d204a2b14cf19ba, 0xbd2c3406762f05d}}
 
-	isom(&P, &A, &K, k)
-	if !ceqFp(&P.x, &expP.x) || !ceqFp(&P.z, &expP.z) {
+	xIso(&P, &A, &K, k)
+	if !eqFp(&P.x, &expP.x) || !eqFp(&P.z, &expP.z) {
 		normP := toNormX(&P)
 		normPExp := toNormX(&expP)
 		t.Errorf("P != expP [\n %s != %s\n]", normP.Text(16), normPExp.Text(16))
 	}
-	if !ceqFp(&A.a, &expA.a) || !ceqFp(&A.c, &expA.c) {
+	if !eqFp(&A.a, &expA.a) || !eqFp(&A.c, &expA.c) {
 		t.Errorf("A != expA %X %X", A.a[0], expA.a[0])
 	}
 }
@@ -317,7 +317,7 @@ func BenchmarkXMul(b *testing.B) {
 	k = fp{0x7A36C930A83EFBD5, 0xD0E80041ED0DDF9F, 0x5AA17134F1B8F877, 0x975711EC94168E51, 0xB3CAD962BED4BAC5, 0x3026DFDD7E4F5687, 0xE67F91AB8EC9C3AF, 0x34671D3FD8C317E7}
 
 	for n := 0; n < b.N; n++ {
-		xMul512(&kP, &P, &co, &k)
+		xMul(&kP, &P, &co, &k)
 	}
 }
 
@@ -366,6 +366,6 @@ func BenchmarkIsom(b *testing.B) {
 	kern.z = toFp("1")
 
 	for n := 0; n < b.N; n++ {
-		isom(&P, &co, &kern, k)
+		xIso(&P, &co, &kern, k)
 	}
 }
