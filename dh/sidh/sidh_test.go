@@ -8,109 +8,133 @@ import (
 	"math/big"
 	"testing"
 
-	. "github.com/henrydcase/nobs/dh/sidh/internal/isogeny"
+	"github.com/henrydcase/nobs/dh/sidh/internal/common"
+	. "github.com/henrydcase/nobs/internal/test"
 )
 
 /* -------------------------------------------------------------------------
    Test data
    -------------------------------------------------------------------------*/
-var tdata = map[uint8]struct {
-	name    string
-	KatFile string
-	PkA     string
-	PrA     string
-	PkB     string
-	PrB     string
-}{
-	FP_503: {
-		name: "P-503",
-		PrA:  "B0AD510708F4ABCF3E0D97DC2F2FF112D9D2AAE49D97FFD1E4267F21C6E71C03",
-		PrB:  "A885A8B889520A6DBAD9FB33365E5B77FDED629440A16A533F259A510F63A822",
-		PkA: "A6BADBA04518A924B20046B59AC197DCDF0EA48014C9E228C4994CCA432F360E" +
-			"2D527AFB06CA7C96EE5CEE19BAD53BF9218A3961CAD7EC092BD8D9EBB22A3D51" +
-			"33008895A3F1F6A023F91E0FE06A00A622FD6335DAC107F8EC4283DC2632F080" +
-			"4E64B390DAD8A2572F1947C67FDF4F8787D140CE2C6B24E752DA9A195040EDFA" +
-			"C27333FAE97DBDEB41DA9EEB2DB067AE7DA8C58C0EF57AEFC18A3D6BD0576FF2" +
-			"F1CFCAEC50C958331BF631F3D2E769790C7B6DF282B74BBC02998AD10F291D47" +
-			"C5A762FF84253D3B3278BDF20C8D4D4AA317BE401B884E26A1F02C7308AADB68" +
-			"20EBDB0D339F5A63346F3B40CACED72F544DAF51566C6E807D0E6E1E38514342" +
-			"432661DC9564DA07548570E256688CD9E8060D8775F95D501886D958588CACA0" +
-			"9F2D2AE1913F996E76AF63E31A179A7A7D2A46EDA03B2BCCF9020A5AA15F9A28" +
-			"9340B33F3AE7F97360D45F8AE1B9DD48779A57E8C45B50A02C00349CD1C58C55" +
-			"1D68BC2A75EAFED944E8C599C288037181E997471352E24C952B",
-		PkB: "244AF1F367C2C33912750A98497CC8214BC195BD52BD76513D32ACE4B75E31F0" +
-			"281755C265F5565C74E3C04182B9C244071859C8588CC7F09547CEFF8F7705D2" +
-			"60CE87D6BFF914EE7DBE4B9AF051CA420062EEBDF043AF58184495026949B068" +
-			"98A47046BFAE8DF3B447746184AF550553BB5D266D6E1967ACA33CAC5F399F90" +
-			"360D70867F2C71EF6F94FF915C7DA8BC9549FB7656E691DAEFC93CF56876E482" +
-			"CA2F8BE2D6CDCC374C31AD8833CABE997CC92305F38497BEC4DFD1821B004FEC" +
-			"E16448F9A24F965EFE409A8939EEA671633D9FFCF961283E59B8834BDF7EDDB3" +
-			"05D6275B61DA6692325432A0BAA074FC7C1F51E76208AB193A57520D40A76334" +
-			"EE5712BDC3E1EFB6103966F2329EDFF63082C4DFCDF6BE1C5A048630B81871B8" +
-			"83B735748A8FD4E2D9530C272163AB18105B10015CA7456202FE1C9B92CEB167" +
-			"5EAE1132E582C88E47ED87B363D45F05BEA714D5E9933D7AF4071CBB5D49008F" +
-			"3E3DAD7DFF935EE509D5DE561842B678CCEB133D62E270E9AC3E",
+type sidhVec struct {
+	id   uint8
+	name string
+	PkA  string
+	PrA  string
+	PkB  string
+	PrB  string
+}
+
+var tdataSidh = map[uint8]sidhVec{
+	Fp434: {
+		id:   Fp434,
+		name: "P-434",
+		PrA:  "3A727E04EA9B7E2A766A6F846489E7E7B915263BCEED308BB10FC900",
+		PrB:  "E37BFE55B43B32448F375903D8D226EC94ADBFEA1D2B3536EB987001",
+		PkA: "9E668D1E6750ED4B91EE052C32839CA9DD2E56D52BC24DECC950AAAD" +
+			"24CEED3F9049C77FE80F0B9B01E7F8DAD7833EEC2286544D6380009C" +
+			"379CDD3E7517CEF5E20EB01F8231D52FC30DC61D2F63FB357F85DC63" +
+			"96E8A95DB9740BD3A972C8DB7901B31F074CD3E45345CA78F9008171" +
+			"30E688A29A7CF0073B5C00FF2C65FBE776918EF9BD8E75B29EF7FAB7" +
+			"91969B60B0C5B37A8992EDEF95FA7BAC40A95DAFE02E237301FEE9A7" +
+			"A43FD0B73477E8035DD12B73FAFEF18D39904DDE3653A754F36BE188" +
+			"8F6607C6A7951349A414352CF31A29F2C40302DB406C48018C905EB9" +
+			"DC46AFBF42A9187A9BB9E51B587622A2862DC7D5CC598BF38ED6320F" +
+			"B51D8697AD3D7A72ABCC32A393F0133DA8DF5E253D9E00B760B2DF34" +
+			"2FCE974DCFE946CFE4727783531882800F9E5DD594D6D5A6275EEFEF" +
+			"9713ED838F4A06BB34D7B8D46E0B385AAEA1C7963601",
+		PkB: "C9F73E4497AAA3FDF9EB688135866A8A83934BA10E273B8CC3808CF0" +
+			"C1F5FAB3E9BB295885881B73DEBC875670C0F51C4BB40DF5FEDE01B8" +
+			"AF32D1BF10508B8C17B2734EB93B2B7F5D84A4A0F2F816E9E2C32AC2" +
+			"53C0B6025B124D05A87A9E2A8567930F44BAA14219B941B6B400B4AE" +
+			"D1D796DA12A5A9F0B8F3F5EE9DD43F64CB24A3B1719DF278ADF56B5F" +
+			"3395187829DA2319DEABF6BBD6EDA244DE2B62CC5AC250C1009DD1CD" +
+			"4712B0B37406612AD002B5E51A62B51AC9C0374D143ABBBD58275FAF" +
+			"C4A5E959C54838C2D6D9FB43B7B2609061267B6A2E6C6D01D295C422" +
+			"3E0D3D7A4CDCFB28A7818A737935279751A6DD8290FD498D1F6AD5F4" +
+			"FFF6BDFA536713F509DCE8047252F1E7D0DD9FCC414C0070B5DCCE36" +
+			"65A21A032D7FBE749181032183AFAD240B7E671E87FBBEC3A8CA4C11" +
+			"AA7A9A23AC69AE2ACF54B664DECD27753D63508F1B02",
 	},
-	FP_751: {
+	Fp503: {
+		id:   Fp503,
+		name: "P-503",
+		PrA:  "D5B94224FA1AD1701EC277FDA83462D09E87181C2E583C5F09FD446A43F25103",
+		PrB:  "FF0EF91753D71D83D912656856086007AD2CF3B2A979B2BD63E5313BFD276506",
+		PkA: "FFB9A589DBB3975A20373F1AD3B449880E1DA47916FCD7C751A019AAA8E95A03" +
+			"4ADA1AE8BFCF6FBF70F323713318E25315DE865B29C9124982594BF78CD61C09" +
+			"B98C22307DFD4FC0958C58EC0D144828006E510FA4072D721B48D1A3CFEA02F6" +
+			"062324FE1B68F457CF29BD4EB1FB68D0684EE69F53A3FAC327404341BB39365B" +
+			"5DE885034C9A6DD6798CB08126183C696D0302730D489584AC8D6BCADF3AB4DE" +
+			"FFC227D3B1701462DA15BF68EF2B07C44712DB5429B74063202F43DC0EA7919D" +
+			"B95025B2B03E5A3EBF57FF37E21838CE8F5531F491315E576A260DC2F515DDF2" +
+			"4DEDE54CA69737CE6442B4219CD472D9CCCF8AF12B5C5B23ACB9C22929924ABA" +
+			"52C820932C82435518B920AFC43F2041263AE98D29E58B73F33A5DD42AAC7533" +
+			"404B4AC2B83DD2C7BEA7676930B6007CC185C264672B75F5332C18429BBC7B0F" +
+			"2EA3F746995A298E7443FFB0C1B27DCA7D19635064AF3B87938960587F56B724" +
+			"C1EF1FF012B056D7301F8713295B7734563542D4259B8BEA260C",
+		PkB: "AA3303F79FCE4855DE125B239D10BEC3B7082E55B08C769A9765F1BF41A31210" +
+			"66382D6BF2857D85138CC17D69593B8FC7703D22C553FB077DFB3AC577CF1E55" +
+			"2AED6DC0368123E01DDD70059A47E31E06423D2F697A3DA5D621EB5FF2A52EE7" +
+			"CA7D3BD01B427AC14CB6099E03C6639A3BAC9B939297CEB10F276F93CF16A1EE" +
+			"1B8085DE3DA037C911491B145B034A47B42A996A61C2313FEF166FD3665B0AE8" +
+			"C201A268DA01AB52E4759ACCC1DD09685A17CDA5D44AF847931ABB221D62E241" +
+			"2329394445ADFD662C77472A9268F40AB540177C0E6F1D59026E595C46FBED2F" +
+			"703838C5F3D7A811B500237596C5E960AA1F2989C5F17DD60D8A752569DBF250" +
+			"E01C63C9790D014CE05A9D8683814A320E30185E478AF9ABD761DADDA8DE7E3E" +
+			"A53C224AC8313C176D14BD0F04AB09A9D0D0302ACBF768EB4DB03681EAE3BC10" +
+			"21CAA429A1490AE1D6E0CA9D6BC4BCD14B1CFE694226D03E8731E9E0B3760877" +
+			"7D56630B31298CC05B6FF6C1A08935312D8E95B8056AD7831A22",
+	},
+	Fp751: {
+		id:   Fp751,
 		name: "P-751",
 		// PrA - Alice's Private Key: 2*randint(0,2^371)
-		PrA: "C09957CC83045FB4C3726384D784476ACB6FFD92E5B15B3C2D451BA063F1BD4CED8FBCF682A98DD0954D3" +
-			"7BCAF730E",
+		PrA: "B1937F2B009FD9F785C5AD899F5ED2FD064218C07A76798D1433336E093DF184CA0CAF6E7C92B320E89632A7765F0B",
 		// PrB - Bob's Private Key: 3*randint(0,3^238)
-		PrB: "393E8510E78A16D2DC1AACA9C9D17E7E78DB630881D8599C7040D05BB5557ECAE8165C45D5366ECB37B00" +
-			"969740AF201",
-		PkA: "74D8EF08CB74EC99BF08B6FBE4FB3D048873B67F018E44988B9D70C564D058401D20E093C7DF0C66F022C" +
-			"823E5139D2EA0EE137804B4820E950B046A90B0597759A0B6A197C56270128EA089FA1A2007DDE3430B37" +
-			"A3E6350BD47B7F513863741C125FA63DEDAFC475C13DB59E533055B7CBE4B2F32672DF2DF97E03E29617B" +
-			"0E9B6A35B58ABB26527A721142701EB147C7050E1D9125DA577B08CD51C8BB50627B8B47FACFC9C7C07DD" +
-			"00DD75115DD83719FD5F96115DED23ECAA50B1044C6BF3F27442DA284BA4A272D850F414FB185801BF2EF" +
-			"7E628EDB5643E35694B992CF30A2C5120CAF9434F09ACFCA3645B3FFC3A308901FAC7B8955FD5C98576AE" +
-			"FD03F5806CB7430F75B3431B75BEC080596ABCA26E637E6E8D4C25175A8C052C9CBE77900A863F83FAB00" +
-			"95B32D9C3858EF8A35B9F163D429E71DBA47539EB4791D117FE39DDE94EA7801A42DB12D84DE4740ACF51" +
-			"CD7C32BB854569D7D94E11E69D9663CC7ED02E78CF48F4069DF3D3E86198B307095C6B11D46C0DC849F9D" +
-			"94C7693209E5B3848AFAA6DA6A8D73362D779CBC43515902ED2BCE3A748C537DE2FCF092FD3E91B790AF5" +
-			"4E1092C5E5B89BE5BE23B955A52F769D97277EF69F820109042F28C316AC90AE69EB374C9280300B816E6" +
-			"2494B2E01072D1CA96E4B284D2BE1368D6969744B614FACBC8C165864E26E33481D4FDC47B6E523954A25" +
-			"C1A096A37CD23FB81AE64FB11BD0A439609F1CE40673B06DD96F698A910E935219D840F3D411EDFB00D98" +
-			"065AB9868C32D3DA05FF415",
-		PkB: "F6C260C4141E418457CB442E11F0F5558375437576E55D211D19EF83E2839E51D07A82765D8E7B6366FA7" +
-			"0B56CDE3AD3B629ACF542A433369496EDA51EDFBE16EFA1B8DEE1CE46B37820ECBD0CD674AACD4F21FABC" +
-			"2436651E3AF604356FF3EB2CA87976890E34A56FAEC9A2ACD9559B1BB67B69AC1A521342E1E787DA5D709" +
-			"32B0F5842ECA1C99B269DB6C2ED8397F0FC49F114CF8B5AF327A698C0251575CDD1D67732668109A91A3B" +
-			"FA5B47D413C7FAB8817FCBEBFE9BDD9C0B1F3B1934A7028A65233E8B58A92E7E9F66B68B2057ECBF7E44A" +
-			"0EF6EFCC3C8AA5414E100FA0C24F7545324AD17062FC11377A2A4749DEE27E192460E099DBDA8E840EA11" +
-			"AD9D5C83DF065AF77030E7FE18CE24CFC71D356B9B9601811B93676C12CB6B41747133D5259E7A20CC065" +
-			"FAB99DF944FDB34ABB9A374F9E9CC8F9C186BD2181DC2771F69C02629C3E4801A7E7C21F6F3CFF7D257E2" +
-			"257C88C015F0CC8DC0E7FB3373CF4ED6A786AB329E7F16895CA147AD91F6EAE1DFE38116580DF52381599" +
-			"E4246278CB1848FE4A56ABF98652E9E7C2E681551A3D78FA033D932087D8B6567D779A56B726B153033D7" +
-			"2231A1B5C16ED7DC4458308D6B64AF6723CC0F52C94E04C58FCA9739E890AA40CC05E22321F10129D2B59" +
-			"1F317102034C109A56D711591E5B44C717CFC9C9B9461894767CAFA42D2B394194B03999C2A9EF48868F3" +
-			"FB03D1A40F596613AF97F4ED7643A1C2D12692E959C6DEB8E72403ADC0E42204DBCE5056EEF0CC60B0C6E" +
-			"83B8B55AC01F6C85644EE49",
+		PrB: "54DB4380D4134E187F5793FA82A4F18B39CA2F8F1C145FFB040FC917E2F41542037FF227F3A4AAFB17A6983AA88B4403",
+		PkA: "2B53BB7C002A9D18B077D068C38353ADFD57A3CA0E431D92CCB8060D41A83A09" +
+			"C1500BEE63FB07DA1DBEDB4AF145F22C2D8152B07B7E124F06643C7AB5B1C48D" +
+			"581FC4C6FB7FC165F6E02F40B47D81400B84B6288DEAB38DE795B51486430974" +
+			"788377770D46B0ABC1F3F7C3647A0E38ACED475EA8EE990F3C5A7668452478C1" +
+			"975993E126B405E476AD6A10E9DD4E135ADA910BE41A8F93331268791F7B958A" +
+			"0888052D1CF7B9128058A258002F22AC48E2C296E3935033139D336FDEB33E9B" +
+			"8713663B1705B566AC4F4455FD0E710A5236C18011EA971DDD18633F9022C432" +
+			"B225EC401FCD4C233B8BF91BE5944D1A657516CE4B844D0BC6049478046B60B6" +
+			"BE163E41CCE743054806B13FAC0A1FA393C866D74A5A93A938209287324FAB46" +
+			"295F5B271C9D8CFEE17868599202D7AEF1A67EBE2FA2A27AD9E0991CEDEE270D" +
+			"1E7639425D94A0F0A2EFDE90B86D5D7F03F3CF97D30415CAA661F865ADB788E6" +
+			"3F79EE2FE8637D9DCAF3BCD5C42AE499688048BBB49F216B4714675FD87F7CCC" +
+			"37A0C2EA56BB53675584F7648BA052F963C35387ECC4DDED4F8076934FF32D5D" +
+			"77B5D3C57553757A4CB9588C4575D4CC4CA8280370041A6FF03007C31D0712E8" +
+			"327CC5BC9885F896904FAB4EE167745260D331C3E85E8A32FCCD23093F2C55A9" +
+			"EA8D7BECEFC3564D3C3D4CE585B62785773B2228742185C97D6F51CD3E3CF885" +
+			"5CF37F305734E97A86479580FDB9983DDCAE9D0F1B125523DB2FE58339240A58" +
+			"131D0EFD14A560A6F7EDE774F6C3C54F46DD0830",
+		PkB: "E93E4E2B0E7348C088FD91F8E3B17CC52B55C5E8933B6D00B3757E5347C5A0AE" +
+			"5F1A6051C32FB20A41013A244484C8D0501B6A3516A634581E08C907F29D651C" +
+			"BCC5B6CA6BAC4DCC980CD36155B60A2108134D3F78ED19ADA2B8B20184302FD7" +
+			"47E096B01ABB33CB76B115D673B00F76913281CF7A0B44FF5CF1A256B8138FE6" +
+			"77AB8D22FEBBCB10EB46E442D0AD96A126DD24E941280C7AB3F9FAC2832A149C" +
+			"AD93D221EDCB406303F5A1B38F43F310244D766239A7F4D89EED4C6FD272BC4F" +
+			"F7C4E34F3E5E77BFF59D6FE5C0D3937F574ABE81C2FC1FEDD98F43323F8F2D7C" +
+			"154DCEBF410FCF698A4E6506D6FD6E4A861395F75698C810A527E00ADC118C90" +
+			"9CDE7729B24C6E7DE9C92CFB592CB9A4BAC54DB468AA52724452CC7A7B40509B" +
+			"B7894ACCF2C7933537FD52DB312D7FBC4FDE01AC2350CD25ABDD5E6F3AEF87BA" +
+			"1BE23691544EB6A4F8FA9CF2BE70B9665EA479B44DC3C61D4651CDDB53656B6F" +
+			"3A2D139EC6BE8550B8A623CCA30EB5374F70C67A932712002006F3D73190384F" +
+			"6D3BEC9DB9F46E9B7AE2891E615752E74DC112579CF43283E8B6EBEF4C802BD6" +
+			"700A97B9739E8694B48D8CB9C8ABBC915A834FF1DBF2C823B3E156D0A415C558" +
+			"71B719BD9DD215F57C8D19A6B4F8CD93283D6EBD135347DAAF4F20C54D24017F" +
+			"5E6AF400AB6DC98AD2D5810E59360DF64503599FAF6FBAB720CC557DEEF0F528" +
+			"249DEB530C8F310465E0BE2B4041C24DAF783BC4EE71D27C760FA7CFD4A9A691" +
+			"70BCBA465CA242961671DF0C53A8112CCD708D58",
 	},
 }
 
 /* -------------------------------------------------------------------------
    Helpers
    -------------------------------------------------------------------------*/
-// Fail if err !=nil. Display msg as an error message
-func checkErr(t testing.TB, err error, msg string) {
-	if err != nil {
-		t.Error(msg)
-	}
-}
-
-// Utility used for running same test with all registered prime fields
-type MultiIdTestingFunc func(testing.TB, uint8)
-
-func Do(f MultiIdTestingFunc, t testing.TB) {
-	for id, val := range tdata {
-		fmt.Printf("\tTesting: %s\n", val.name)
-		f(t, id)
-	}
-}
-
-// Converts string to private key
+// Converts string to private key.
 func convToPrv(s string, v KeyVariant, id uint8) *PrivateKey {
 	key := NewPrivateKey(id, v)
 	hex, e := hex.DecodeString(s)
@@ -124,7 +148,7 @@ func convToPrv(s string, v KeyVariant, id uint8) *PrivateKey {
 	return key
 }
 
-// Converts string to public key
+// Converts string to public key.
 func convToPub(s string, v KeyVariant, id uint8) *PublicKey {
 	key := NewPublicKey(id, v)
 	hex, e := hex.DecodeString(s)
@@ -138,135 +162,148 @@ func convToPub(s string, v KeyVariant, id uint8) *PublicKey {
 	return key
 }
 
-/* -------------------------------------------------------------------------
-   Unit tests
-   -------------------------------------------------------------------------*/
-func testKeygen(t testing.TB, id uint8) {
-	prvB := NewPrivateKey(id, KeyVariant_SIDH_B)
-	err := prvB.Generate(rand.Reader)
-	checkErr(t, err, "key generation failed")
+/* Unit tests */
 
-	alicePrivate := convToPrv(tdata[id].PrA, KeyVariant_SIDH_A, id)
-	bobPrivate := convToPrv(tdata[id].PrB, KeyVariant_SIDH_B, id)
-	expPubA := convToPub(tdata[id].PkA, KeyVariant_SIDH_A, id)
-	expPubB := convToPub(tdata[id].PkB, KeyVariant_SIDH_B, id)
+func testKeygen(t *testing.T, v sidhVec) {
+	pubA := NewPublicKey(v.id, KeyVariantSidhA)
+	pubB := NewPublicKey(v.id, KeyVariantSidhB)
+	alicePrivate := convToPrv(v.PrA, KeyVariantSidhA, v.id)
+	bobPrivate := convToPrv(v.PrB, KeyVariantSidhB, v.id)
+	expPubA := convToPub(v.PkA, KeyVariantSidhA, v.id)
+	expPubB := convToPub(v.PkB, KeyVariantSidhB, v.id)
 
-	pubA := alicePrivate.GeneratePublicKey()
-	pubB := bobPrivate.GeneratePublicKey()
+	alicePrivate.GeneratePublicKey(pubA)
+	bobPrivate.GeneratePublicKey(pubB)
 
-	if !bytes.Equal(pubA.Export(), expPubA.Export()) {
-		t.Fatalf("unexpected value of public key A")
+	got := make([]byte, expPubA.Size())
+	exp := make([]byte, expPubA.Size())
+	pubA.Export(got)
+	expPubA.Export(exp)
+	if !bytes.Equal(got, exp) {
+		t.Fatalf("unexpected value of public key A\ngot [%X]\nexp [%X]", got, exp)
 	}
-	if !bytes.Equal(pubB.Export(), expPubB.Export()) {
-		t.Fatalf("unexpected value of public key B")
+
+	got = make([]byte, expPubB.Size())
+	exp = make([]byte, expPubB.Size())
+	pubB.Export(got)
+	expPubB.Export(exp)
+	if !bytes.Equal(got, exp) {
+		t.Fatalf("unexpected value of public key B\ngot [%X]\nexp [%X]", got, exp)
 	}
 }
 
-func testRoundtrip(t testing.TB, id uint8) {
+func testRoundtrip(t *testing.T, v sidhVec) {
 	var err error
-
-	prvA := NewPrivateKey(id, KeyVariant_SIDH_A)
-	prvB := NewPrivateKey(id, KeyVariant_SIDH_B)
+	pubA := NewPublicKey(v.id, KeyVariantSidhA)
+	pubB := NewPublicKey(v.id, KeyVariantSidhB)
+	prvA := NewPrivateKey(v.id, KeyVariantSidhA)
+	prvB := NewPrivateKey(v.id, KeyVariantSidhB)
+	s1 := make([]byte, common.Params(v.id).SharedSecretSize)
+	s2 := make([]byte, common.Params(v.id).SharedSecretSize)
 
 	// Generate private keys
 	err = prvA.Generate(rand.Reader)
-	checkErr(t, err, "key generation failed")
+	CheckNoErr(t, err, "key generation failed")
 	err = prvB.Generate(rand.Reader)
-	checkErr(t, err, "key generation failed")
+	CheckNoErr(t, err, "key generation failed")
 
 	// Generate public keys
-	pubA := prvA.GeneratePublicKey()
-	pubB := prvB.GeneratePublicKey()
+	prvA.GeneratePublicKey(pubA)
+	prvB.GeneratePublicKey(pubB)
 
 	// Derive shared secret
-	s1, err := DeriveSecret(prvB, pubA)
-	checkErr(t, err, "")
-
-	s2, err := DeriveSecret(prvA, pubB)
-	checkErr(t, err, "")
+	prvB.DeriveSecret(s1, pubA)
+	prvA.DeriveSecret(s2, pubB)
 
 	if !bytes.Equal(s1[:], s2[:]) {
-		t.Fatalf("Tthe two shared keys: \n%X, \n%X do not match", s1, s2)
+		t.Fatalf("Two shared keys do not match:\ns1 [%X]\ns2 [%X]", s1, s2)
 	}
 }
 
-func testKeyAgreement(t testing.TB, id uint8, pkA, prA, pkB, prB string) {
-	var e error
+func testKeyAgreement(t *testing.T, v sidhVec) {
+	var err error
+	s1 := make([]byte, common.Params(v.id).SharedSecretSize)
+	s2 := make([]byte, common.Params(v.id).SharedSecretSize)
 
 	// KeyPairs
-	alicePublic := convToPub(pkA, KeyVariant_SIDH_A, id)
-	bobPublic := convToPub(pkB, KeyVariant_SIDH_B, id)
-	alicePrivate := convToPrv(prA, KeyVariant_SIDH_A, id)
-	bobPrivate := convToPrv(prB, KeyVariant_SIDH_B, id)
+	alicePublic := convToPub(v.PkA, KeyVariantSidhA, v.id)
+	bobPublic := convToPub(v.PkB, KeyVariantSidhB, v.id)
+	alicePrivate := convToPrv(v.PrA, KeyVariantSidhA, v.id)
+	bobPrivate := convToPrv(v.PrB, KeyVariantSidhB, v.id)
 
 	// Do actual test
-	s1, e := DeriveSecret(bobPrivate, alicePublic)
-	checkErr(t, e, "derivation s1")
-	s2, e := DeriveSecret(alicePrivate, bobPublic)
-	checkErr(t, e, "derivation s1")
+	bobPrivate.DeriveSecret(s1, alicePublic)
+	alicePrivate.DeriveSecret(s2, bobPublic)
 
 	if !bytes.Equal(s1[:], s2[:]) {
-		t.Fatalf("two shared keys: %d, %d do not match", s1, s2)
+		t.Fatalf("two shared keys do not match\ngot [%X]\nexp [%X]", s1, s2)
 	}
 
 	// Negative case
-	dec, e := hex.DecodeString(tdata[id].PkA)
-	if e != nil {
-		t.FailNow()
-	}
+	dec, err := hex.DecodeString(v.PkA)
+	CheckNoErr(t, err, "decoding failed")
+
 	dec[0] = ^dec[0]
-	e = alicePublic.Import(dec)
-	if e != nil {
-		t.FailNow()
-	}
+	err = alicePublic.Import(dec)
+	CheckNoErr(t, err, "import failed")
 
-	s1, e = DeriveSecret(bobPrivate, alicePublic)
-	checkErr(t, e, "derivation of s1 failed")
-	s2, e = DeriveSecret(alicePrivate, bobPublic)
-	checkErr(t, e, "derivation of s2 failed")
-
+	bobPrivate.DeriveSecret(s1, alicePublic)
+	alicePrivate.DeriveSecret(s2, bobPublic)
 	if bytes.Equal(s1[:], s2[:]) {
-		t.Fatalf("The two shared keys: %d, %d match", s1, s2)
+		t.Fatalf("DeriveSecret produces wrong results. The two shared keys match, but they shouldn't")
 	}
 }
 
-func testImportExport(t testing.TB, id uint8) {
+func testImportExport(t *testing.T, v sidhVec) {
 	var err error
-	a := NewPublicKey(id, KeyVariant_SIDH_A)
-	b := NewPublicKey(id, KeyVariant_SIDH_B)
+	a := NewPublicKey(v.id, KeyVariantSidhA)
+	b := NewPublicKey(v.id, KeyVariantSidhB)
 
 	// Import keys
-	a_hex, err := hex.DecodeString(tdata[id].PkA)
-	checkErr(t, err, "invalid hex-number provided")
+	aHex, err := hex.DecodeString(v.PkA)
+	CheckNoErr(t, err, "invalid hex-number provided")
 
-	err = a.Import(a_hex)
-	checkErr(t, err, "import failed")
+	err = a.Import(aHex)
+	CheckNoErr(t, err, "import failed")
 
-	b_hex, err := hex.DecodeString(tdata[id].PkB)
-	checkErr(t, err, "invalid hex-number provided")
+	bHex, err := hex.DecodeString(v.PkB)
+	CheckNoErr(t, err, "invalid hex-number provided")
 
-	err = b.Import(b_hex)
-	checkErr(t, err, "import failed")
+	err = b.Import(bHex)
+	CheckNoErr(t, err, "import failed")
+
+	aBytes := make([]byte, a.Size())
+	bBytes := make([]byte, b.Size())
+	a.Export(aBytes)
+	b.Export(bBytes)
 
 	// Export and check if same
-	if !bytes.Equal(b.Export(), b_hex) || !bytes.Equal(a.Export(), a_hex) {
+	if !bytes.Equal(bBytes, bHex) || !bytes.Equal(aBytes, aHex) {
 		t.Fatalf("export/import failed")
 	}
 
-	if (len(b.Export()) != b.Size()) || (len(a.Export()) != a.Size()) {
+	if (len(bBytes) != b.Size()) || (len(aBytes) != a.Size()) {
 		t.Fatalf("wrong size of exported keys")
+	}
+
+	// Ensure that public key is unchanged after it is exported
+	aBytes2 := make([]byte, a.Size())
+	bBytes2 := make([]byte, b.Size())
+	a.Export(aBytes2)
+	b.Export(bBytes2)
+	if !bytes.Equal(aBytes, aBytes2) || !bytes.Equal(bBytes, bBytes2) {
+		t.Fatalf("Second export doesn't match first export")
 	}
 }
 
-func testPrivateKeyBelowMax(t testing.TB, id uint8) {
-	params := Params(id)
-	for variant, keySz := range map[KeyVariant]*DomainParams{
-		KeyVariant_SIDH_A: &params.A,
-		KeyVariant_SIDH_B: &params.B} {
-
-		func(v KeyVariant, dp *DomainParams) {
+func testPrivateKeyBelowMax(t *testing.T, vec sidhVec) {
+	for variant, keySz := range map[KeyVariant]*common.DomainParams{
+		KeyVariantSidhA: &common.Params(vec.id).A,
+		KeyVariantSidhB: &common.Params(vec.id).B} {
+		func(v KeyVariant, dp *common.DomainParams) {
 			var blen = int(dp.SecretByteLen)
-			var prv = NewPrivateKey(id, v)
+			var prv = NewPrivateKey(vec.id, v)
+			var secretBytes = make([]byte, prv.Size())
 
 			// Calculate either (2^e2 - 1) or (2^s - 1); where s=ceil(log_2(3^e3)))
 			maxSecertVal := big.NewInt(int64(dp.SecretBitLen))
@@ -276,11 +313,11 @@ func testPrivateKeyBelowMax(t testing.TB, id uint8) {
 			// Do same test 1000 times
 			for i := 0; i < 1000; i++ {
 				err := prv.Generate(rand.Reader)
-				checkErr(t, err, "Private key generation")
+				CheckNoErr(t, err, "Private key generation")
 
 				// Convert to big-endian, as that's what expected by (*Int)SetBytes()
-				secretBytes := prv.Export()
-				for i := 0; i < int(blen/2); i++ {
+				prv.Export(secretBytes)
+				for i := 0; i < blen/2; i++ {
 					tmp := secretBytes[i] ^ secretBytes[blen-i-1]
 					secretBytes[i] = tmp ^ secretBytes[i]
 					secretBytes[blen-i-1] = tmp ^ secretBytes[blen-i-1]
@@ -295,149 +332,282 @@ func testPrivateKeyBelowMax(t testing.TB, id uint8) {
 	}
 }
 
-func TestKeyAgreementP751(t *testing.T) {
-	for id, val := range tdata {
-		fmt.Printf("\tTesting: %s\n", val.name)
-		testKeyAgreement(t, id, tdata[id].PkA, tdata[id].PrA, tdata[id].PkB, tdata[id].PrB)
-	}
-}
-
 func TestKeyAgreementP751_AliceEvenNumber(t *testing.T) {
 	// even alice
-	prE := "C09957CC83045FB4C3726384D784476ACB6FFD92E5B15B3C2D451BA063F1BD4CED8FBCF682A98DD0954D37BCAF730F"
-	pkE := "8A2DE6FD963C475F7829B689C8B8306FC0917A39EBBC35CA171546269A85698FEC0379E2E1A3C567BE1B8EF5639F81F304889737E6CC444DBED4579DB204DC8C7928F5CBB1ECDD682A1B5C48C0DAF34208C06BF201BE4E6063B1BFDC42413B0537F8E76BEE645C1A24118301BAB17EB8D6E0F283BCB16EFB833E4BB3463953C93165A0DDAC55B385059F27FF7228486D0A733812C81C792BE9EC3A16A5DB0EB099EEA76AC0E59612251A3AD19F7CC567DA2AEBD7733171F48E471D17648692355164E27B515D2A47D7BA34B3B48A047BE7C09C4ABEE2FCC9ACA7396C8A8C9E73E29533FC7369094DFA7988778E55E53F309922C6E233F8F9C7936C3D29CEA640406FCA06450AA1978FF39F227BF06B1E072F1763447C6F513B23CDF3B0EC0379070AEE5A02D9AD8E0EB023461D631F4A9643A4C79921334945F6B33DDFC11D9703BD06B047B4DA404AB12EFD2C3A49E5C42D10DA063352748B21DE41C32A5693FE1C0DCAB111F4990CD58BECADB1892EE7A7E99C9DB4DA4E69C96E57138B99038BC9B877ECE75914EFB98DD08B9E4A2DCCB948A8F7D2F26678A9952BA0EFAB1E9CF6E51B557480DEC2BA30DE0FE4AFE30A6B30765EE75EF64F678316D81C72755AD2CFA0B8C7706B07BFA52FBC3DB84EF9E79796C0089305B1E13C78660779E0FF2A13820CE141104F976B1678990F85B2D3D2B89CD5BC4DD52603A5D24D3EFEDA44BAA0F38CDB75A220AF45EAB70F2799875D435CE50FC6315EDD4BB7AA7260AFD7CD0561B69B4FA3A817904322661C3108DA24"
-	testKeyAgreement(t, FP_751, pkE, prE, tdata[FP_751].PkB, tdata[FP_751].PrB)
+	v := tdataSidh[Fp751]
+	v.PkA = "FDED78E9F490CB518BD6357E18FEEB63FFEFEBE907338B3ABCA74A7E590DBF79" +
+		"0C732AB9E3778244608CD563064BDF6AAEF511CEAF07C702309ADAA7EBEBC6B3" +
+		"D7B00F5C02FB2FEDA763B2D695FD27F93F45D3AC58C2F0524A942D6DE407B651" +
+		"1854A1D974F11A8686CF8AD675A081F4B668F3C6617029AA33FD597C8910AB37" +
+		"F71DBE004A3FF8442C4B65DE51201DFAE6F9DC20FDE5B998D19C23589437229D" +
+		"724B4378602321F247276E7B4E441383C9BE6D277A127362D9C9FB68A41C5F5B" +
+		"9D2BA63FA790D62315DECF5049F0476A43D30BC1E8A36047C8EE0DA9E0A3937E" +
+		"BDF52A91BC53266A82CBF2CEAB227CB6D5075B486679CA7701F6F35C53499B45" +
+		"A451CE37C57B9BB1276142F495B83D987BD4B62E78E3084DCF3EB906D19DFA8F" +
+		"819DFC7FDF104C1A01CCF8D933B91EBD72CDE83A502B1FB0A5DF782BC7085766" +
+		"AE795123903A2D30F0F79073D27CF71BA4C9D3CA86512842AA8B5AEB729C78B1" +
+		"E15392E20A6043C05F88F6F412C3C9FE14F8FAAE8B8482514822162F93E81615" +
+		"BDD77363F872D0506FFDC1809C165A5C8A19F8EA0254D73E08202A6FF3AF43CF" +
+		"A7EC9B137AE003A19440DCE2EF3CFC99080F75E683AF6D0E25DF55C60B2A8013" +
+		"FA3D59828D31C2360DF83E202FB48AFAA65AF7279137E827B80E761FA49B842A" +
+		"A70FD4E77B284A14B8E28C8B11B389E1160DD9877C8D5A5A1471E605F1848369" +
+		"3F7578B3733DDEE117227E35B1765FEBB765B340A084E8D99176C0837099C864" +
+		"C71C864842D3E9B58CB870AD45F3B6BE476FEB6D"
+	v.PrA = "C09957CC83045FB4C3726384D784476ACB6FFD92E5B15B3C2D451BA063F1BD4CE" +
+		"D8FBCF682A98DD0954D37BCAF730F"
+	testKeyAgreement(t, v)
 }
 
 /* -------------------------------------------------------------------------
-   Wrappers for 'testing' module
+   Wrappers for 'testing' SIDH
    -------------------------------------------------------------------------*/
-func TestKeygen(t *testing.T)             { Do(testKeygen, t) }
-func TestRoundtrip(t *testing.T)          { Do(testRoundtrip, t) }
-func TestImportExport(t *testing.T)       { Do(testImportExport, t) }
-func TestPrivateKeyBelowMax(t *testing.T) { Do(testPrivateKeyBelowMax, t) }
+func testSidhVec(t *testing.T, m *map[uint8]sidhVec, f func(t *testing.T, v sidhVec)) {
+	for i := range *m {
+		v := (*m)[i]
+		t.Run(v.name, func(t *testing.T) { f(t, v) })
+	}
+}
+func TestKeygen(t *testing.T)             { testSidhVec(t, &tdataSidh, testKeygen) }
+func TestRoundtrip(t *testing.T)          { testSidhVec(t, &tdataSidh, testRoundtrip) }
+func TestImportExport(t *testing.T)       { testSidhVec(t, &tdataSidh, testImportExport) }
+func TestKeyAgreement(t *testing.T)       { testSidhVec(t, &tdataSidh, testKeyAgreement) }
+func TestPrivateKeyBelowMax(t *testing.T) { testSidhVec(t, &tdataSidh, testPrivateKeyBelowMax) }
 
 /* -------------------------------------------------------------------------
    Benchmarking
    -------------------------------------------------------------------------*/
 func BenchmarkSidhKeyAgreementP751(b *testing.B) {
 	// KeyPairs
-	alicePublic := convToPub(tdata[FP_751].PkA, KeyVariant_SIDH_A, FP_751)
-	bobPublic := convToPub(tdata[FP_751].PkB, KeyVariant_SIDH_B, FP_751)
-	alicePrivate := convToPrv(tdata[FP_751].PrA, KeyVariant_SIDH_A, FP_751)
-	bobPrivate := convToPrv(tdata[FP_751].PrB, KeyVariant_SIDH_B, FP_751)
+	alicePublic := convToPub(tdataSidh[Fp751].PkA, KeyVariantSidhA, Fp751)
+	bobPublic := convToPub(tdataSidh[Fp751].PkB, KeyVariantSidhB, Fp751)
+	alicePrivate := convToPrv(tdataSidh[Fp751].PrA, KeyVariantSidhA, Fp751)
+	bobPrivate := convToPrv(tdataSidh[Fp751].PrB, KeyVariantSidhB, Fp751)
+	var ss [2 * 94]byte
 
 	for i := 0; i < b.N; i++ {
 		// Derive shared secret
-		DeriveSecret(bobPrivate, alicePublic)
-		DeriveSecret(alicePrivate, bobPublic)
+		bobPrivate.DeriveSecret(ss[:], alicePublic)
+		alicePrivate.DeriveSecret(ss[:], bobPublic)
 	}
 }
 
 func BenchmarkSidhKeyAgreementP503(b *testing.B) {
 	// KeyPairs
-	alicePublic := convToPub(tdata[FP_503].PkA, KeyVariant_SIDH_A, FP_503)
-	bobPublic := convToPub(tdata[FP_503].PkB, KeyVariant_SIDH_B, FP_503)
-	alicePrivate := convToPrv(tdata[FP_503].PrA, KeyVariant_SIDH_A, FP_503)
-	bobPrivate := convToPrv(tdata[FP_503].PrB, KeyVariant_SIDH_B, FP_503)
+	alicePublic := convToPub(tdataSidh[Fp503].PkA, KeyVariantSidhA, Fp503)
+	bobPublic := convToPub(tdataSidh[Fp503].PkB, KeyVariantSidhB, Fp503)
+	alicePrivate := convToPrv(tdataSidh[Fp503].PrA, KeyVariantSidhA, Fp503)
+	bobPrivate := convToPrv(tdataSidh[Fp503].PrB, KeyVariantSidhB, Fp503)
+	var ss [2 * 63]byte
 
 	for i := 0; i < b.N; i++ {
 		// Derive shared secret
-		DeriveSecret(bobPrivate, alicePublic)
-		DeriveSecret(alicePrivate, bobPublic)
+		bobPrivate.DeriveSecret(ss[:], alicePublic)
+		alicePrivate.DeriveSecret(ss[:], bobPublic)
+	}
+}
+
+func BenchmarkSidhKeyAgreementP434(b *testing.B) {
+	// KeyPairs
+	alicePublic := convToPub(tdataSidh[Fp434].PkA, KeyVariantSidhA, Fp434)
+	bobPublic := convToPub(tdataSidh[Fp434].PkB, KeyVariantSidhB, Fp434)
+	alicePrivate := convToPrv(tdataSidh[Fp434].PrA, KeyVariantSidhA, Fp434)
+	bobPrivate := convToPrv(tdataSidh[Fp434].PrB, KeyVariantSidhB, Fp434)
+	var ss [2 * 63]byte
+
+	for i := 0; i < b.N; i++ {
+		// Derive shared secret
+		bobPrivate.DeriveSecret(ss[:], alicePublic)
+		alicePrivate.DeriveSecret(ss[:], bobPublic)
 	}
 }
 
 func BenchmarkAliceKeyGenPrvP751(b *testing.B) {
-	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_A)
+	prv := NewPrivateKey(Fp751, KeyVariantSidhA)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkAliceKeyGenPrvP503(b *testing.B) {
-	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_A)
+	prv := NewPrivateKey(Fp503, KeyVariantSidhA)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
+	}
+}
+
+func BenchmarkAliceKeyGenPrvP434(b *testing.B) {
+	prv := NewPrivateKey(Fp434, KeyVariantSidhA)
+	for n := 0; n < b.N; n++ {
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkBobKeyGenPrvP751(b *testing.B) {
-	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_B)
+	prv := NewPrivateKey(Fp751, KeyVariantSidhB)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkBobKeyGenPrvP503(b *testing.B) {
-	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_B)
+	prv := NewPrivateKey(Fp503, KeyVariantSidhB)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
+	}
+}
+
+func BenchmarkBobKeyGenPrvP434(b *testing.B) {
+	prv := NewPrivateKey(Fp434, KeyVariantSidhB)
+	for n := 0; n < b.N; n++ {
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkAliceKeyGenPubP751(b *testing.B) {
-	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_A)
-	prv.Generate(rand.Reader)
+	prv := NewPrivateKey(Fp751, KeyVariantSidhA)
+	pub := NewPublicKey(Fp751, KeyVariantSidhA)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
-		prv.GeneratePublicKey()
+		prv.GeneratePublicKey(pub)
 	}
 }
 
 func BenchmarkAliceKeyGenPubP503(b *testing.B) {
-	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_A)
-	prv.Generate(rand.Reader)
+	prv := NewPrivateKey(Fp503, KeyVariantSidhA)
+	pub := NewPublicKey(Fp503, KeyVariantSidhA)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
-		prv.GeneratePublicKey()
+		prv.GeneratePublicKey(pub)
+	}
+}
+
+func BenchmarkAliceKeyGenPubP434(b *testing.B) {
+	prv := NewPrivateKey(Fp434, KeyVariantSidhA)
+	pub := NewPublicKey(Fp434, KeyVariantSidhA)
+	_ = prv.Generate(rand.Reader)
+	for n := 0; n < b.N; n++ {
+		prv.GeneratePublicKey(pub)
 	}
 }
 
 func BenchmarkBobKeyGenPubP751(b *testing.B) {
-	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_B)
-	prv.Generate(rand.Reader)
+	prv := NewPrivateKey(Fp751, KeyVariantSidhB)
+	pub := NewPublicKey(Fp751, KeyVariantSidhB)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
-		prv.GeneratePublicKey()
+		prv.GeneratePublicKey(pub)
 	}
 }
 
 func BenchmarkBobKeyGenPubP503(b *testing.B) {
-	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_B)
-	prv.Generate(rand.Reader)
+	prv := NewPrivateKey(Fp503, KeyVariantSidhB)
+	pub := NewPublicKey(Fp503, KeyVariantSidhB)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
-		prv.GeneratePublicKey()
+		prv.GeneratePublicKey(pub)
+	}
+}
+
+func BenchmarkBobKeyGenPubP434(b *testing.B) {
+	prv := NewPrivateKey(Fp434, KeyVariantSidhB)
+	pub := NewPublicKey(Fp434, KeyVariantSidhB)
+	_ = prv.Generate(rand.Reader)
+	for n := 0; n < b.N; n++ {
+		prv.GeneratePublicKey(pub)
 	}
 }
 
 func BenchmarkSharedSecretAliceP751(b *testing.B) {
-	aPr := convToPrv(tdata[FP_751].PrA, KeyVariant_SIDH_A, FP_751)
-	bPk := convToPub(tdata[FP_751].PkB, KeyVariant_SIDH_B, FP_751)
+	aPr := convToPrv(tdataSidh[Fp751].PrA, KeyVariantSidhA, Fp751)
+	bPk := convToPub(tdataSidh[Fp751].PkB, KeyVariantSidhB, Fp751)
+	var ss [2 * 94]byte
 	for n := 0; n < b.N; n++ {
-		DeriveSecret(aPr, bPk)
+		aPr.DeriveSecret(ss[:], bPk)
 	}
 }
 
 func BenchmarkSharedSecretAliceP503(b *testing.B) {
-	aPr := convToPrv(tdata[FP_503].PrA, KeyVariant_SIDH_A, FP_503)
-	bPk := convToPub(tdata[FP_503].PkB, KeyVariant_SIDH_B, FP_503)
+	aPr := convToPrv(tdataSidh[Fp503].PrA, KeyVariantSidhA, Fp503)
+	bPk := convToPub(tdataSidh[Fp503].PkB, KeyVariantSidhB, Fp503)
+	var ss [2 * 63]byte
 	for n := 0; n < b.N; n++ {
-		DeriveSecret(aPr, bPk)
+		aPr.DeriveSecret(ss[:], bPk)
+	}
+}
+
+func BenchmarkSharedSecretAliceP434(b *testing.B) {
+	aPr := convToPrv(tdataSidh[Fp434].PrA, KeyVariantSidhA, Fp434)
+	bPk := convToPub(tdataSidh[Fp434].PkB, KeyVariantSidhB, Fp434)
+	var ss [2 * 63]byte
+	for n := 0; n < b.N; n++ {
+		aPr.DeriveSecret(ss[:], bPk)
 	}
 }
 
 func BenchmarkSharedSecretBobP751(b *testing.B) {
 	// m_B = 3*randint(0,3^238)
-	aPk := convToPub(tdata[FP_751].PkA, KeyVariant_SIDH_A, FP_751)
-	bPr := convToPrv(tdata[FP_751].PrB, KeyVariant_SIDH_B, FP_751)
+	aPk := convToPub(tdataSidh[Fp751].PkA, KeyVariantSidhA, Fp751)
+	bPr := convToPrv(tdataSidh[Fp751].PrB, KeyVariantSidhB, Fp751)
+	var ss [2 * 94]byte
 	for n := 0; n < b.N; n++ {
-		DeriveSecret(bPr, aPk)
+		bPr.DeriveSecret(ss[:], aPk)
 	}
 }
 
 func BenchmarkSharedSecretBobP503(b *testing.B) {
 	// m_B = 3*randint(0,3^238)
-	aPk := convToPub(tdata[FP_503].PkA, KeyVariant_SIDH_A, FP_503)
-	bPr := convToPrv(tdata[FP_503].PrB, KeyVariant_SIDH_B, FP_503)
+	aPk := convToPub(tdataSidh[Fp503].PkA, KeyVariantSidhA, Fp503)
+	bPr := convToPrv(tdataSidh[Fp503].PrB, KeyVariantSidhB, Fp503)
+	var ss [2 * 63]byte
 	for n := 0; n < b.N; n++ {
-		DeriveSecret(bPr, aPk)
+		bPr.DeriveSecret(ss[:], aPk)
 	}
+}
+
+func BenchmarkSharedSecretBobP434(b *testing.B) {
+	// m_B = 3*randint(0,3^238)
+	aPk := convToPub(tdataSidh[Fp434].PkA, KeyVariantSidhA, Fp434)
+	bPr := convToPrv(tdataSidh[Fp434].PrB, KeyVariantSidhB, Fp434)
+	var ss [2 * 63]byte
+	for n := 0; n < b.N; n++ {
+		bPr.DeriveSecret(ss[:], aPk)
+	}
+}
+
+// Examples
+
+func ExamplePrivateKey() {
+	// import "github.com/henrydcase/nobs/dh/sidh"
+
+	// Allice's key pair
+	prvA := NewPrivateKey(Fp503, KeyVariantSidhA)
+	pubA := NewPublicKey(Fp503, KeyVariantSidhA)
+	// Bob's key pair
+	prvB := NewPrivateKey(Fp503, KeyVariantSidhB)
+	pubB := NewPublicKey(Fp503, KeyVariantSidhB)
+	// Generate keypair for Allice
+	err := prvA.Generate(rand.Reader)
+	if err != nil {
+		fmt.Print(err)
+	}
+	prvA.GeneratePublicKey(pubA)
+	// Generate keypair for Bob
+	err = prvB.Generate(rand.Reader)
+	if err != nil {
+		fmt.Print(err)
+	}
+	prvB.GeneratePublicKey(pubB)
+	// Buffers storing shared secret
+	ssA := make([]byte, prvA.SharedSecretSize())
+	ssB := make([]byte, prvA.SharedSecretSize())
+	// Allice calculates shared secret with hers private
+	// key and Bob's public key
+	prvA.DeriveSecret(ssA[:], pubB)
+	// Bob calculates shared secret with hers private
+	// key and Allice's public key
+	prvB.DeriveSecret(ssB[:], pubA)
+	// Check if ssA == ssB
+	fmt.Printf("%t\n", bytes.Equal(ssA, ssB))
+	// Output:
+	// true
 }
