@@ -319,10 +319,14 @@ func Validate(pub *PublicKey, rng io.Reader) bool {
 // curve y^2 = x^3 + Ax^2 + x, computed by applying action of a prv.e
 // on a curve represented by pub.a.
 func DeriveSecret(out *[64]byte, pub *PublicKey, prv *PrivateKey, rng io.Reader) bool {
+	var pk PublicKey
+
 	if !Validate(pub, rng) {
 		return false
 	}
-	groupAction(pub, prv, rng)
-	pub.Export(out[:])
+	// Resulting shared secret is stored in the pk
+	copy(pk.a[:], pub.a[:])
+	groupAction(&pk, prv, rng)
+	pk.Export(out[:])
 	return true
 }
