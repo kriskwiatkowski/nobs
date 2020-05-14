@@ -10,7 +10,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/henrydcase/nobs/sidh/internal/common"
+	"github.com/henrydcase/nobs/dh/sidh/internal/common"
 	"golang.org/x/sys/cpu"
 )
 
