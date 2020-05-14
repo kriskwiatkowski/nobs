@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/henrydcase/nobs/dh/sidh/internal/common"
-	. "github.com/henrydcase/nobs/internal/test"
 )
 
 /* -------------------------------------------------------------------------
@@ -22,6 +21,13 @@ type sidhVec struct {
 	PrA  string
 	PkB  string
 	PrB  string
+}
+
+func checkErr(t testing.TB, err error, msg string) {
+	t.Helper()
+	if err != nil {
+		t.Error(msg)
+	}
 }
 
 var tdataSidh = map[uint8]sidhVec{
@@ -203,9 +209,9 @@ func testRoundtrip(t *testing.T, v sidhVec) {
 
 	// Generate private keys
 	err = prvA.Generate(rand.Reader)
-	CheckNoErr(t, err, "key generation failed")
+	checkErr(t, err, "key generation failed")
 	err = prvB.Generate(rand.Reader)
-	CheckNoErr(t, err, "key generation failed")
+	checkErr(t, err, "key generation failed")
 
 	// Generate public keys
 	prvA.GeneratePublicKey(pubA)
@@ -241,11 +247,11 @@ func testKeyAgreement(t *testing.T, v sidhVec) {
 
 	// Negative case
 	dec, err := hex.DecodeString(v.PkA)
-	CheckNoErr(t, err, "decoding failed")
+	checkErr(t, err, "decoding failed")
 
 	dec[0] = ^dec[0]
 	err = alicePublic.Import(dec)
-	CheckNoErr(t, err, "import failed")
+	checkErr(t, err, "import failed")
 
 	bobPrivate.DeriveSecret(s1, alicePublic)
 	alicePrivate.DeriveSecret(s2, bobPublic)
@@ -261,16 +267,16 @@ func testImportExport(t *testing.T, v sidhVec) {
 
 	// Import keys
 	aHex, err := hex.DecodeString(v.PkA)
-	CheckNoErr(t, err, "invalid hex-number provided")
+	checkErr(t, err, "invalid hex-number provided")
 
 	err = a.Import(aHex)
-	CheckNoErr(t, err, "import failed")
+	checkErr(t, err, "import failed")
 
 	bHex, err := hex.DecodeString(v.PkB)
-	CheckNoErr(t, err, "invalid hex-number provided")
+	checkErr(t, err, "invalid hex-number provided")
 
 	err = b.Import(bHex)
-	CheckNoErr(t, err, "import failed")
+	checkErr(t, err, "import failed")
 
 	aBytes := make([]byte, a.Size())
 	bBytes := make([]byte, b.Size())
@@ -313,7 +319,7 @@ func testPrivateKeyBelowMax(t *testing.T, vec sidhVec) {
 			// Do same test 1000 times
 			for i := 0; i < 1000; i++ {
 				err := prv.Generate(rand.Reader)
-				CheckNoErr(t, err, "Private key generation")
+				checkErr(t, err, "Private key generation")
 
 				// Convert to big-endian, as that's what expected by (*Int)SetBytes()
 				prv.Export(secretBytes)

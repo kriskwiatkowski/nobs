@@ -29,14 +29,8 @@ ifeq ($(DBG),1)
 	OPTS_ENV+= GOTRACEBACK=crash	# enable core dumps
 endif
 
-test: 
+test:
 	$(OPTS_ENV) $(GO) test $(OPTS) $(TEST_PATH)
-
-test_csidh: clean make_dirs $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test $(OPTS) github.com/henrydcase/nobs/dh/csidh
-
-test_csidh_bin: clean make_dirs $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); $(OPTS_ENV) GOPATH=$(GOPATH_LOCAL) go test -c $(OPTS) github.com/henrydcase/nobs/dh/csidh
 
 cover:
 	$(GO) test \
@@ -45,10 +39,6 @@ cover:
 bench:
 	$(GO) test $(BENCH_OPTS) $(TEST_PATH)
 
-bench_csidh: clean $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
-		$(BENCH_OPTS) github.com/henrydcase/nobs/dh/csidh
-		
 clean:
 	rm -rf $(VENDOR_DIR)
 	rm -rf coverage.txt
@@ -57,6 +47,10 @@ vendor-sidh-for-tls: clean
 	mkdir -p $(VENDOR_DIR)/github_com/henrydcase/nobs/
 	rsync -a . $(VENDOR_DIR)/github_com/henrydcase/nobs/ --exclude=$(VENDOR_DIR) --exclude=.git --exclude=.travis.yml --exclude=README.md
 	find $(VENDOR_DIR) -type f -print0 -name "*.go" | xargs -0 sed -i 's/github\.com/github_com/g'
+
+gen: clean
+	$(GO) generate -v ./...
+	$(GO) mod tidy
 
 pprof-cpu:
 	$(GO) tool pprof cpu.out

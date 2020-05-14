@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/henrydcase/nobs/dh/sidh/internal/common"
-	. "github.com/henrydcase/nobs/internal/test"
 )
 
 type sikeVec struct {
@@ -22,6 +22,25 @@ type sikeVec struct {
 	KatFile string
 	PkB     string
 	PrB     string
+}
+
+func Ok(t testing.TB, err error, msg string) {
+	t.Helper()
+	if err != nil {
+		t.Error(msg)
+	}
+}
+
+// testPanic returns true if call to function 'f' caused panic.
+func testPanic(f func()) error {
+	var hasPanicked = errors.New("no panic detected")
+	defer func() {
+		if r := recover(); r != nil {
+			hasPanicked = nil
+		}
+	}()
+	f()
+	return hasPanicked
 }
 
 var tdataSike = map[uint8]sikeVec{
@@ -99,17 +118,17 @@ func testPKERoundTrip(t *testing.T, v sikeVec) {
 	pkB := NewPublicKey(params.ID, KeyVariantSike)
 	skB := NewPrivateKey(params.ID, KeyVariantSike)
 	pkHex, err := hex.DecodeString(v.PkB)
-	CheckNoErr(t, err, "Test vector wrong")
+	Ok(t, err, "Test vector wrong")
 	skHex, err := hex.DecodeString(v.PrB)
-	CheckNoErr(t, err, "Test vector wrong")
+	Ok(t, err, "Test vector wrong")
 	err = pkB.Import(pkHex)
-	CheckNoErr(t, err, "Public key import failed")
+	Ok(t, err, "Public key import failed")
 	err = skB.Import(skHex)
-	CheckNoErr(t, err, "Private key import failed")
+	Ok(t, err, "Private key import failed")
 	err = v.kem.encrypt(ct, rand.Reader, pkB, msg[:])
-	CheckNoErr(t, err, "PKE roundtrip - encryption failed")
+	Ok(t, err, "PKE roundtrip - encryption failed")
 	ptLen, err := v.kem.decrypt(pt[:], skB, ct)
-	CheckNoErr(t, err, "PKE roundtrip - decription failed")
+	Ok(t, err, "PKE roundtrip - decription failed")
 
 	if !bytes.Equal(pt[:ptLen], msg[:]) {
 		t.Errorf("Decryption failed \n got : %X\n exp : %X", pt[:ptLen], msg)
@@ -132,13 +151,13 @@ func testPKEKeyGeneration(t *testing.T, v sikeVec) {
 	}
 
 	err = sk.Generate(rand.Reader)
-	CheckNoErr(t, err, "PKE key generation")
+	Ok(t, err, "PKE key generation")
 	sk.GeneratePublicKey(pk)
 
 	err = v.kem.encrypt(ct, rand.Reader, pk, msg[:])
-	CheckNoErr(t, err, "PKE encryption")
+	Ok(t, err, "PKE encryption")
 	ptLen, err := v.kem.decrypt(pt[:], sk, ct)
-	CheckNoErr(t, err, "PKE key decryption")
+	Ok(t, err, "PKE key decryption")
 
 	if !bytes.Equal(pt[:ptLen], msg[:]) {
 		t.Fatalf("Decryption failed \n got : %X\n exp : %X", pt, msg)
@@ -154,12 +173,15 @@ func testNegativePKE(t *testing.T, v sikeVec) {
 
 	// Generate key
 	err = sk.Generate(rand.Reader)
-	CheckNoErr(t, err, "key generation")
+	Ok(t, err, "key generation")
 	sk.GeneratePublicKey(pk)
 
 	// bytelen(msg) - 1
 	err = v.kem.encrypt(ct, rand.Reader, pk, msg[:v.kem.params.KemSize+8-1])
-	CheckIsErr(t, err, "PKE encryption doesn't fail")
+	if err == nil {
+		t.Error(msg)
+	}
+
 	for _, v := range ct {
 		if v != 0 {
 			t.Fatal("Returned ciphertext must be not changed")
@@ -178,16 +200,16 @@ func testKEMRoundTrip(t *testing.T, pkB, skB []byte, v sikeVec) {
 	var ssBsz = v.kem.SharedSecretSize()
 
 	err = pk.Import(pkB)
-	CheckNoErr(t, err, "Public key import failed")
+	Ok(t, err, "Public key import failed")
 	err = sk.Import(skB)
-	CheckNoErr(t, err, "Private key import failed")
+	Ok(t, err, "Private key import failed")
 
 	v.kem.Reset()
 	err = v.kem.Encapsulate(ct, ssE[:], pk)
-	CheckNoErr(t, err, "Encapsulation failed")
+	Ok(t, err, "Encapsulation failed")
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD[:ssBsz], sk, pk, ct)
-	CheckNoErr(t, err, "Decapsulation failed")
+	Ok(t, err, "Decapsulation failed")
 
 	if !bytes.Equal(ssE[:v.kem.SharedSecretSize()], ssD[:v.kem.SharedSecretSize()]) {
 		t.Errorf("Shared secrets from decapsulation and encapsulation differ [%s]", v.name)
@@ -201,16 +223,16 @@ func testKEMKeyGeneration(t *testing.T, v sikeVec) {
 
 	sk := NewPrivateKey(v.id, KeyVariantSike)
 	pk := NewPublicKey(v.id, KeyVariantSike)
-	CheckNoErr(t, sk.Generate(rand.Reader), "error: key generation")
+	Ok(t, sk.Generate(rand.Reader), "error: key generation")
 	sk.GeneratePublicKey(pk)
 
 	// calculated shared secret
 	v.kem.Reset()
 	err := v.kem.Encapsulate(ct, ssE[:], pk)
-	CheckNoErr(t, err, "encapsulation failed")
+	Ok(t, err, "encapsulation failed")
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD[:v.kem.SharedSecretSize()], sk, pk, ct)
-	CheckNoErr(t, err, "decapsulation failed")
+	Ok(t, err, "decapsulation failed")
 
 	if !bytes.Equal(ssE[:], ssD[:]) {
 		t.Fatalf("KEM failed \n encapsulated: %X\n decapsulated: %X", ssD[:], ssE[:])
@@ -226,33 +248,33 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 
 	sk := NewPrivateKey(v.id, KeyVariantSike)
 	pk := NewPublicKey(v.id, KeyVariantSike)
-	CheckNoErr(t, sk.Generate(rand.Reader), "error: key generation")
+	Ok(t, sk.Generate(rand.Reader), "error: key generation")
 	sk.GeneratePublicKey(pk)
 
 	v.kem.Reset()
 	err := v.kem.Encapsulate(ct, ssE[:], pk)
-	CheckNoErr(t, err, "pre-requisite for a test failed")
+	Ok(t, err, "pre-requisite for a test failed")
 
 	// Try decapsulate too small ciphertext
 	v.kem.Reset()
-	CheckNoErr(
+	Ok(
 		t,
-		CheckPanic(func() { _ = v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ct[:len(ct)-2]) }),
+		testPanic(func() { _ = v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ct[:len(ct)-2]) }),
 		"Decapsulation must panic if ciphertext is too small")
 
 	ctTmp := make([]byte, len(ct)+1)
 	// Try decapsulate too big ciphertext
 	v.kem.Reset()
-	CheckNoErr(
+	Ok(
 		t,
-		CheckPanic(func() { _ = v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ctTmp) }),
+		testPanic(func() { _ = v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ctTmp) }),
 		"Decapsulation must panic if ciphertext is too big")
 
 	// Change ciphertext
 	ct[0] = ct[0] - 1
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD[:ssBsz], sk, pk, ct)
-	CheckNoErr(t, err, "decapsulation returns error when invalid ciphertext provided")
+	Ok(t, err, "decapsulation returns error when invalid ciphertext provided")
 
 	if bytes.Equal(ssE[:], ssD[:]) {
 		// no idea how this could ever happen, but it would be very bad
@@ -263,16 +285,16 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 	pkSidh := NewPublicKey(v.id, KeyVariantSidhB)
 	prSidh := NewPrivateKey(v.id, KeyVariantSidhB)
 	v.kem.Reset()
-	CheckNoErr(
+	Ok(
 		t,
-		CheckPanic(func() { _ = v.kem.Encapsulate(ct, ssE[:], pkSidh) }),
+		testPanic(func() { _ = v.kem.Encapsulate(ct, ssE[:], pkSidh) }),
 		"encapsulation accepts SIDH public key")
 
 	// Try decapsulating with SIDH key
 	v.kem.Reset()
-	CheckNoErr(
+	Ok(
 		t,
-		CheckPanic(func() { _ = v.kem.Decapsulate(ssD[:ssBsz], prSidh, pk, ct) }),
+		testPanic(func() { _ = v.kem.Decapsulate(ssD[:ssBsz], prSidh, pk, ct) }),
 		"encapsulation accepts SIDH public key")
 }
 
@@ -287,18 +309,18 @@ func testNegativeKEMSameWrongResult(t *testing.T, v sikeVec) {
 
 	sk := NewPrivateKey(v.id, KeyVariantSike)
 	pk := NewPublicKey(v.id, KeyVariantSike)
-	CheckNoErr(t, sk.Generate(rand.Reader), "error: key generation")
+	Ok(t, sk.Generate(rand.Reader), "error: key generation")
 	sk.GeneratePublicKey(pk)
 
 	v.kem.Reset()
 	err := v.kem.Encapsulate(ct, ssE[:], pk)
-	CheckNoErr(t, err, "pre-requisite for a test failed")
+	Ok(t, err, "pre-requisite for a test failed")
 
 	// make ciphertext wrong
 	ct[0] = ct[0] - 1
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD1[:ssBsz], sk, pk, ct)
-	CheckNoErr(t, err, "pre-requisite for a test failed")
+	Ok(t, err, "pre-requisite for a test failed")
 
 	// change secret keysecond decapsulation must be done with same, but imported private key
 	var expSk [common.MaxSikePrivateKeyBsz]byte
@@ -306,12 +328,12 @@ func testNegativeKEMSameWrongResult(t *testing.T, v sikeVec) {
 
 	// create new private key
 	sk = NewPrivateKey(v.id, KeyVariantSike)
-	CheckNoErr(t, sk.Import(expSk[:sk.Size()]), "import failed")
+	Ok(t, sk.Import(expSk[:sk.Size()]), "import failed")
 
 	// try decapsulating again.
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD2[:ssBsz], sk, pk, ct)
-	CheckNoErr(t, err, "pre-requisite for a test failed")
+	Ok(t, err, "pre-requisite for a test failed")
 
 	// ssD1 must be same as ssD2
 	if !bytes.Equal(ssD1[:], ssD2[:]) {
@@ -335,7 +357,7 @@ func testKAT(t *testing.T, v sikeVec) {
 		}
 
 		err := v.kem.Decapsulate(ssGot, prvKey, pubKey, ct)
-		CheckNoErr(t, err, "sike test: can't perform degcapsulation KAT")
+		Ok(t, err, "sike test: can't perform degcapsulation KAT")
 		if !bytes.Equal(ssGot, ssExpected) {
 			t.Fatalf("KAT decapsulation failed\n")
 		}
@@ -365,7 +387,7 @@ func testKAT(t *testing.T, v sikeVec) {
 		var prvKey = NewPrivateKey(v.id, KeyVariantSike)
 		var pubKey = NewPublicKey(v.id, KeyVariantSike)
 		var pubKeyBytes = make([]byte, pubKey.Size())
-		CheckNoErr(t, prvKey.Import(sk), "Can't load KAT")
+		Ok(t, prvKey.Import(sk), "Can't load KAT")
 
 		// Generate public key
 		prvKey.GeneratePublicKey(pubKey)
@@ -439,9 +461,9 @@ func TestKEMRoundTrip(t *testing.T) {
 	for _, val := range tdataSike {
 		//		fmt.Printf("\tTesting: %s\n", val.name)
 		pk, err := hex.DecodeString(val.PkB)
-		CheckNoErr(t, err, "public key B not a number")
+		Ok(t, err, "public key B not a number")
 		sk, err := hex.DecodeString(val.PrB)
-		CheckNoErr(t, err, "private key B not a number")
+		Ok(t, err, "private key B not a number")
 		testKEMRoundTrip(t, pk, sk, val)
 	}
 }
