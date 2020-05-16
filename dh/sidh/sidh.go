@@ -15,23 +15,23 @@ type KeyVariant uint
 
 // Base type for public and private key. Used mainly to carry domain
 // parameters.
-type key struct {
+type Key struct {
 	// Domain parameters of the algorithm to be used with a key
-	params *common.SidhParams
+	Params *common.SidhParams
 	// Flag indicates wether corresponds to 2-, 3-torsion group or SIKE
-	keyVariant KeyVariant
+	KeyVariant KeyVariant
 }
 
 // Defines operations on public key
 type PublicKey struct {
-	key
+	Key
 	// x-coordinates of P,Q,P-Q in this exact order
 	affine3Pt [3]common.Fp2
 }
 
 // Defines operations on private key
 type PrivateKey struct {
-	key
+	Key
 	// Secret key
 	Scalar []byte
 	// Used only by KEM
@@ -59,14 +59,14 @@ const (
 )
 
 // Accessor to key variant.
-func (key *key) Variant() KeyVariant {
-	return key.keyVariant
+func (key *Key) Variant() KeyVariant {
+	return key.KeyVariant
 }
 
 // NewPublicKey initializes public key.
 // Usage of this function guarantees that the object is correctly initialized.
 func NewPublicKey(id uint8, v KeyVariant) *PublicKey {
-	return &PublicKey{key: key{params: common.Params(id), keyVariant: v}}
+	return &PublicKey{Key: Key{Params: common.Params(id), KeyVariant: v}}
 }
 
 // Import clears content of the public key currently stored in the structure
@@ -76,11 +76,11 @@ func (pub *PublicKey) Import(input []byte) error {
 	if len(input) != pub.Size() {
 		return errors.New("sidh: input to short")
 	}
-	ssSz := pub.params.SharedSecretSize
-	common.BytesToFp2(&pub.affine3Pt[0], input[0:ssSz], pub.params.Bytelen)
-	common.BytesToFp2(&pub.affine3Pt[1], input[ssSz:2*ssSz], pub.params.Bytelen)
-	common.BytesToFp2(&pub.affine3Pt[2], input[2*ssSz:3*ssSz], pub.params.Bytelen)
-	switch pub.params.ID {
+	ssSz := pub.Params.SharedSecretSize
+	common.BytesToFp2(&pub.affine3Pt[0], input[0:ssSz], pub.Params.Bytelen)
+	common.BytesToFp2(&pub.affine3Pt[1], input[ssSz:2*ssSz], pub.Params.Bytelen)
+	common.BytesToFp2(&pub.affine3Pt[2], input[2*ssSz:3*ssSz], pub.Params.Bytelen)
+	switch pub.Params.ID {
 	case Fp434:
 		p434.ToMontgomery(&pub.affine3Pt[0], &pub.affine3Pt[0])
 		p434.ToMontgomery(&pub.affine3Pt[1], &pub.affine3Pt[1])
@@ -103,8 +103,8 @@ func (pub *PublicKey) Import(input []byte) error {
 // returned byte string is filled with zeros.
 func (pub *PublicKey) Export(out []byte) {
 	var feTmp [3]common.Fp2
-	ssSz := pub.params.SharedSecretSize
-	switch pub.params.ID {
+	ssSz := pub.Params.SharedSecretSize
+	switch pub.Params.ID {
 	case Fp434:
 		p434.FromMontgomery(&feTmp[0], &pub.affine3Pt[0])
 		p434.FromMontgomery(&feTmp[1], &pub.affine3Pt[1])
@@ -120,27 +120,27 @@ func (pub *PublicKey) Export(out []byte) {
 	default:
 		panic("Unsupported key")
 	}
-	common.Fp2ToBytes(out[0:ssSz], &feTmp[0], pub.params.Bytelen)
-	common.Fp2ToBytes(out[ssSz:2*ssSz], &feTmp[1], pub.params.Bytelen)
-	common.Fp2ToBytes(out[2*ssSz:3*ssSz], &feTmp[2], pub.params.Bytelen)
+	common.Fp2ToBytes(out[0:ssSz], &feTmp[0], pub.Params.Bytelen)
+	common.Fp2ToBytes(out[ssSz:2*ssSz], &feTmp[1], pub.Params.Bytelen)
+	common.Fp2ToBytes(out[2*ssSz:3*ssSz], &feTmp[2], pub.Params.Bytelen)
 }
 
 // Size returns size of the public key in bytes.
 func (pub *PublicKey) Size() int {
-	return pub.params.PublicKeySize
+	return pub.Params.PublicKeySize
 }
 
 // NewPrivateKey initializes private key.
 // Usage of this function guarantees that the object is correctly initialized.
 func NewPrivateKey(id uint8, v KeyVariant) *PrivateKey {
-	prv := &PrivateKey{key: key{params: common.Params(id), keyVariant: v}}
+	prv := &PrivateKey{Key: Key{Params: common.Params(id), KeyVariant: v}}
 	if (v & KeyVariantSidhA) == KeyVariantSidhA {
-		prv.Scalar = make([]byte, prv.params.A.SecretByteLen)
+		prv.Scalar = make([]byte, prv.Params.A.SecretByteLen)
 	} else {
-		prv.Scalar = make([]byte, prv.params.B.SecretByteLen)
+		prv.Scalar = make([]byte, prv.Params.B.SecretByteLen)
 	}
 	if v == KeyVariantSike {
-		prv.S = make([]byte, prv.params.MsgLen)
+		prv.S = make([]byte, prv.Params.MsgLen)
 	}
 	return prv
 }
@@ -156,14 +156,14 @@ func (prv *PrivateKey) Export(out []byte) {
 func (prv *PrivateKey) Size() int {
 	tmp := len(prv.Scalar)
 	if prv.Variant() == KeyVariantSike {
-		tmp += prv.params.MsgLen
+		tmp += prv.Params.MsgLen
 	}
 	return tmp
 }
 
 // Size returns size of the shared secret.
 func (prv *PrivateKey) SharedSecretSize() int {
-	return prv.params.SharedSecretSize
+	return prv.Params.SharedSecretSize
 }
 
 // Import clears content of the private key currently stored in the structure
@@ -188,13 +188,13 @@ func (prv *PrivateKey) Import(input []byte) error {
 func (prv *PrivateKey) Generate(rand io.Reader) error {
 	var dp *common.DomainParams
 
-	if (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA {
-		dp = &prv.params.A
+	if (prv.KeyVariant & KeyVariantSidhA) == KeyVariantSidhA {
+		dp = &prv.Params.A
 	} else {
-		dp = &prv.params.B
+		dp = &prv.Params.B
 	}
 
-	if prv.keyVariant == KeyVariantSike {
+	if prv.KeyVariant == KeyVariantSike {
 		if _, err := io.ReadFull(rand, prv.S); err != nil {
 			return err
 		}
@@ -222,13 +222,13 @@ func (prv *PrivateKey) Generate(rand io.Reader) error {
 
 // Generates public key.
 func (prv *PrivateKey) GeneratePublicKey(pub *PublicKey) {
-	var isA = (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA
+	var isA = (prv.KeyVariant & KeyVariantSidhA) == KeyVariantSidhA
 
-	if (pub.keyVariant != prv.keyVariant) || (pub.params.ID != prv.params.ID) {
+	if (pub.KeyVariant != prv.KeyVariant) || (pub.Params.ID != prv.Params.ID) {
 		panic("sidh: incompatbile public key")
 	}
 
-	switch prv.params.ID {
+	switch prv.Params.ID {
 	case Fp434:
 		if isA {
 			p434.PublicKeyGenA(&pub.affine3Pt, prv.Scalar)
@@ -258,13 +258,13 @@ func (prv *PrivateKey) GeneratePublicKey(pub *PublicKey) {
 //
 // Caller must make sure key SIDH key pair is not used more than once.
 func (prv *PrivateKey) DeriveSecret(ss []byte, pub *PublicKey) {
-	var isA = (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA
+	var isA = (prv.KeyVariant & KeyVariantSidhA) == KeyVariantSidhA
 
-	if (pub.keyVariant == prv.keyVariant) || (pub.params.ID != prv.params.ID) {
+	if (pub.KeyVariant == prv.KeyVariant) || (pub.Params.ID != prv.Params.ID) {
 		panic("sidh: public and private are incompatbile")
 	}
 
-	switch prv.params.ID {
+	switch prv.Params.ID {
 	case Fp434:
 		if isA {
 			p434.DeriveSecretA(ss, prv.Scalar, &pub.affine3Pt)

@@ -60,7 +60,7 @@ func (c *KEM) Encapsulate(ciphertext, secret []byte, pub *PublicKey) error {
 		panic("KEM unallocated")
 	}
 
-	if KeyVariantSike != pub.keyVariant {
+	if KeyVariantSike != pub.KeyVariant {
 		panic("Wrong type of public key")
 	}
 
@@ -80,9 +80,9 @@ func (c *KEM) Encapsulate(ciphertext, secret []byte, pub *PublicKey) error {
 
 	var buf [3 * common.MaxSharedSecretBsz]byte
 	var skA = PrivateKey{
-		key: key{
-			params:     c.params,
-			keyVariant: KeyVariantSidhA},
+		Key: Key{
+			Params:     c.params,
+			KeyVariant: KeyVariantSidhA},
 		Scalar: c.secretBytes}
 	var pkA = NewPublicKey(c.params.ID, KeyVariantSidhA)
 
@@ -114,11 +114,11 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 		panic("KEM unallocated")
 	}
 
-	if KeyVariantSike != pub.keyVariant {
+	if KeyVariantSike != pub.KeyVariant {
 		panic("Wrong type of public key")
 	}
 
-	if pub.keyVariant != prv.keyVariant {
+	if pub.KeyVariant != prv.KeyVariant {
 		panic("Public and private key are of different type")
 	}
 
@@ -134,9 +134,9 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 	var r [common.MaxSidhPrivateKeyBsz]byte
 	var pkBytes [3 * common.MaxSharedSecretBsz]byte
 	var skA = PrivateKey{
-		key: key{
-			params:     c.params,
-			keyVariant: KeyVariantSidhA},
+		Key: Key{
+			Params:     c.params,
+			KeyVariant: KeyVariantSidhA},
 		Scalar: c.secretBytes}
 	var pkA = NewPublicKey(c.params.ID, KeyVariantSidhA)
 	c1Len, err := c.decrypt(m[:], prv, ciphertext)
@@ -166,7 +166,7 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 	//
 	// See more details in "On the security of supersingular isogeny cryptosystems"
 	// (S. Galbraith, et al., 2016, ePrint #859).
-	mask := subtle.ConstantTimeCompare(pkBytes[:c.params.PublicKeySize], ciphertext[:pub.params.PublicKeySize])
+	mask := subtle.ConstantTimeCompare(pkBytes[:c.params.PublicKeySize], ciphertext[:pub.Params.PublicKeySize])
 	common.Cpick(mask, m[:c1Len], m[:c1Len], prv.S)
 	c.shake.Reset()
 	_, _ = c.shake.Write(m[:c1Len])
@@ -201,11 +201,11 @@ func (c *KEM) SharedSecretSize() int {
 func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *PublicKey, ptext []byte) {
 	var n [common.MaxMsgBsz]byte
 	var j [common.MaxSharedSecretBsz]byte
-	var ptextLen = skA.params.MsgLen
+	var ptextLen = skA.Params.MsgLen
 
 	skA.DeriveSecret(j[:], pkB)
 	c.shake.Reset()
-	_, _ = c.shake.Write(j[:skA.params.SharedSecretSize])
+	_, _ = c.shake.Write(j[:skA.Params.SharedSecretSize])
 	_, _ = c.shake.Read(n[:ptextLen])
 	for i := range ptext {
 		n[i] ^= ptext[i]
@@ -221,12 +221,12 @@ func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *Public
 func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte) error {
 	var ptextLen = len(ptext)
 	// c1 must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)
-	if ptextLen != pub.params.KemSize {
+	if ptextLen != pub.Params.KemSize {
 		return errors.New("unsupported message length")
 	}
 
-	skA := NewPrivateKey(pub.params.ID, KeyVariantSidhA)
-	pkA := NewPublicKey(pub.params.ID, KeyVariantSidhA)
+	skA := NewPrivateKey(pub.Params.ID, KeyVariantSidhA)
+	pkA := NewPublicKey(pub.Params.ID, KeyVariantSidhA)
 	err := skA.Generate(rng)
 	if err != nil {
 		return err
@@ -243,17 +243,17 @@ func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte)
 func (c *KEM) decrypt(n []byte, prv *PrivateKey, ctext []byte) (int, error) {
 	var c1Len int
 	var j [common.MaxSharedSecretBsz]byte
-	var pkLen = prv.params.PublicKeySize
+	var pkLen = prv.Params.PublicKeySize
 
 	// ctext is a concatenation of (ciphertext = pubkey_A || c1)
 	// it must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)
 	// Lengths has been already checked by Decapsulate()
 	c1Len = len(ctext) - pkLen
-	c0 := NewPublicKey(prv.params.ID, KeyVariantSidhA)
+	c0 := NewPublicKey(prv.Params.ID, KeyVariantSidhA)
 	err := c0.Import(ctext[:pkLen])
 	prv.DeriveSecret(j[:], c0)
 	c.shake.Reset()
-	_, _ = c.shake.Write(j[:prv.params.SharedSecretSize])
+	_, _ = c.shake.Write(j[:prv.Params.SharedSecretSize])
 	_, _ = c.shake.Read(n[:c1Len])
 	for i := range n[:c1Len] {
 		n[i] ^= ctext[pkLen+i]

@@ -97,11 +97,9 @@ func TestEphemeralKeyExchange(t *testing.T) {
 	checkErr(t, GeneratePrivateKey(&prv2, rng), "PrivateKey generation failed")
 	GeneratePublicKey(&pub2, &prv2, rng)
 
-	Ok(t,
-		DeriveSecret(&ss1, &pub1, &prv2, rng),
+	Ok(t, DeriveSecret(&ss1, &pub1, &prv2, rng),
 		"Derivation failed")
-	Ok(t,
-		DeriveSecret(&ss2, &pub2, &prv1, rng),
+	Ok(t, DeriveSecret(&ss2, &pub2, &prv1, rng),
 		"Derivation failed")
 
 	if !bytes.Equal(ss1[:], ss2[:]) {
