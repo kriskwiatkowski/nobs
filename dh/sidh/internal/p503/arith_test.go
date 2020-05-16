@@ -6,7 +6,7 @@ package p503
 import (
 	"testing"
 
-	"github.com/henrydcase/nobs/dh/sidh/internal/common"
+	"github.com/henrydcase/nobs/dh/sidh/common"
 )
 
 // Package-level storage for this field element is intended to deter

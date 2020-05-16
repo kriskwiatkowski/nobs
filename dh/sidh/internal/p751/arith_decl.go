@@ -6,7 +6,7 @@
 package p751
 
 import (
-	. "github.com/henrydcase/nobs/dh/sidh/internal/common"
+	. "github.com/henrydcase/nobs/dh/sidh/common"
 )
 
 // If choice = 0, leave x,y unchanged. If choice = 1, set x,y = y,x.

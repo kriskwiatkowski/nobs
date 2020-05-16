@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/henrydcase/nobs/dh/sidh/internal/common"
+	"github.com/henrydcase/nobs/dh/sidh/common"
 	"github.com/henrydcase/nobs/hash/sha3"
 )
 

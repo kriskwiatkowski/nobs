@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/henrydcase/nobs/dh/sidh/internal/common"
+	"github.com/henrydcase/nobs/dh/sidh/common"
 )
 
 /* -------------------------------------------------------------------------
