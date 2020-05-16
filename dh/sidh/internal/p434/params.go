@@ -3,7 +3,7 @@ package p434
 //go:generate go run ../templates/gen.go P434
 
 import (
-	"github.com/henrydcase/nobs/dh/sidh/internal/common"
+	"github.com/henrydcase/nobs/dh/sidh/common"
 	"golang.org/x/sys/cpu"
 )
 

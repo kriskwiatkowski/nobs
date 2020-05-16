@@ -8,7 +8,7 @@ package p434
 import (
 	"math/bits"
 
-	"github.com/henrydcase/nobs/dh/sidh/internal/common"
+	"github.com/henrydcase/nobs/dh/sidh/common"
 )
 
 // Compute z = x + y (mod p).

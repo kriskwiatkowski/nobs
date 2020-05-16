@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/henrydcase/nobs/dh/sidh/internal/common"
+	"github.com/henrydcase/nobs/dh/sidh/common"
 	"github.com/henrydcase/nobs/dh/sidh/internal/p434"
 	"github.com/henrydcase/nobs/dh/sidh/internal/p503"
 	"github.com/henrydcase/nobs/dh/sidh/internal/p751"

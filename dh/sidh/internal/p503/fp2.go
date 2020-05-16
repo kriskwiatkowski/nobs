@@ -4,7 +4,7 @@
 package p503
 
 import (
-	"github.com/henrydcase/nobs/dh/sidh/internal/common"
+	"github.com/henrydcase/nobs/dh/sidh/common"
 )
 
 // Montgomery multiplication. Input values must be already
