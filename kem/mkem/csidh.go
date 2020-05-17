@@ -1,98 +1,108 @@
 package mkem
 
 import (
-	"crypto/rand"
-
 	"github.com/henrydcase/nobs/dh/csidh"
 	"github.com/henrydcase/nobs/drbg"
 	"github.com/henrydcase/nobs/hash/sha3"
 )
 
-type keypair struct {
-	pk csidh.PublicKey
-	sk csidh.PrivateKey
-}
+const (
+	SharedSecretSz = 64
+	PublicKeySz    = 64
+)
 
+// Used for storing cipertext
 type ciphertext struct {
-	u [64]byte
-	v [64]byte
+	// public key
+	U [64]byte
+	// private key
+	V [64]byte
 }
 
-type multi_ciphertext struct {
-	u [64]byte
-	v [][64]byte
+type PKE struct {
+	Rng *drbg.CtrDrbg
+	H   sha3.ShakeHash
 }
 
-type MultiEnc_csidh struct {
+type MultiPKE struct {
+	PKE
+	// stores ephemeral/internal public key
+	Ct0 [PublicKeySz]byte
+	// stores list of ciphertexts ct[i]
+	Cts [][SharedSecretSz]byte
 }
 
-var rng *drbg.CtrDrbg
+// Allocates PKE
+func (c *PKE) Allocate(rng *drbg.CtrDrbg) {
+	c.Rng = rng
 
-// Function H used in Algorithm 16 and 18
-var h = sha3.NewShake128()
-
-func init() {
-	var tmp [32]byte
-
-	rand.Read(tmp[:])
-	rng = drbg.NewCtrDrbg()
-	if !rng.Init(tmp[:], nil) {
-		panic("Can't initialize DRBG")
-	}
+	// Function H used in Algorithm 16 and 18
+	c.H = sha3.NewShake128()
 }
 
-func (c MultiEnc_csidh) NewKeypair() (kp keypair) {
-	csidh.GeneratePrivateKey(&kp.sk, rng)
-	csidh.GeneratePublicKey(&kp.pk, &kp.sk, rng)
-	return kp
+// Allocates MultiPKE
+func (c *MultiPKE) Allocate(recipients_nb uint, rng *drbg.CtrDrbg) {
+	c.PKE.Allocate(rng)
+	c.Cts = make([][SharedSecretSz]byte, recipients_nb)
 }
 
-func (c MultiEnc_csidh) Enc(pk *csidh.PublicKey, pt *[64]byte) (ct ciphertext) {
+// PKE encryption
+func (c *PKE) Enc(pk *csidh.PublicKey, pt *[16]byte) (ct ciphertext) {
 	var ss [64]byte
+	var pkA csidh.PublicKey
+	var skA csidh.PrivateKey
 
-	enc_key := c.NewKeypair()
-	csidh.DeriveSecret(&ss, pk, &enc_key.sk, rng)
-	h.Write(ss[:])
-	h.Read(ss[:64])
-	h.Reset()
-	for i := 0; i < len(ss); i++ {
-		ct.v[i] = pt[i] ^ ss[i]
+	csidh.GeneratePrivateKey(&skA, c.Rng)
+	csidh.DeriveSecret(&ss, pk, &skA, c.Rng)
+
+	c.H.Reset()
+	c.H.Write(ss[:])
+	c.H.Read(ss[:16])
+	for i := 0; i < 16; i++ {
+		ct.V[i] = pt[i] ^ ss[i]
 	}
 
-	enc_key.pk.Export(ct.u[:])
+	csidh.GeneratePublicKey(&pkA, &skA, c.Rng)
+	pkA.Export(ct.U[:])
 	return
 }
 
-func (c MultiEnc_csidh) Dec(sk *csidh.PrivateKey, ct *ciphertext) (pt [64]byte) {
+// PKE decryption
+func (c *PKE) Dec(sk *csidh.PrivateKey, ct *ciphertext) (pt [16]byte) {
 	var ss [64]byte
 	var pk csidh.PublicKey
 
-	pk.Import(ct.u[:])
-	csidh.DeriveSecret(&ss, &pk, sk, rng)
-	h.Write(ss[:])
-	h.Read(ss[:64])
-	h.Reset()
-	for i := 0; i < len(ss); i++ {
-		pt[i] = ct.v[i] ^ ss[i]
+	pk.Import(ct.U[:])
+	csidh.DeriveSecret(&ss, &pk, sk, c.Rng)
+
+	c.H.Reset()
+	c.H.Write(ss[:])
+	c.H.Read(ss[:16])
+	for i := 0; i < 16; i++ {
+		pt[i] = ct.V[i] ^ ss[i]
 	}
 	return
 }
 
-func (c MultiEnc_csidh) Enc_m(keys []keypair, pt *[64]byte, ct *multi_ciphertext) {
+// mPKE encryption
+func (c *MultiPKE) Encrypt(keys []csidh.PublicKey, pt *[16]byte) {
 	var ss [64]byte
+	var pkA csidh.PublicKey
+	var skA csidh.PrivateKey
 
-	enc_key := c.NewKeypair()
-	for i, key := range keys {
-		csidh.DeriveSecret(&ss, &key.pk, &enc_key.sk, rng)
+	csidh.GeneratePrivateKey(&skA, c.Rng)
+	for i, pk := range keys {
+		csidh.DeriveSecret(&ss, &pk, &skA, c.Rng)
 
-		h.Write(ss[:])
-		h.Read(ss[:64])
-		h.Reset()
-		for j := 0; j < len(ss); j++ {
-			ct.v[i][j] = pt[j] ^ ss[j]
+		c.H.Write(ss[:])
+		c.H.Read(ss[:16])
+		c.H.Reset()
+		for j := 0; j < 16; j++ {
+			c.Cts[i][j] = pt[j] ^ ss[j]
 		}
 	}
 
-	enc_key.pk.Export(ct.u[:])
+	csidh.GeneratePublicKey(&pkA, &skA, c.Rng)
+	pkA.Export(c.Ct0[:])
 	return
 }

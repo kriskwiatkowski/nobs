@@ -20,18 +20,23 @@ type KEM struct {
 	shake       sha3.ShakeHash
 }
 
-// SIKE mKEM interface
+// SIKE mKEM interface. Used only for testing. I store some variables
+// here, to make sure to avoid heap allocations.
 type MultiKEM struct {
 	KEM
+	// stores ephemeral/internal public key
 	ct0 [common.MaxPublicKeySz]byte
+	// stores list of ciphertexts ct[i]
 	cts [][common.MaxMsgBsz]byte
+	// stores j-invariant. kept here to avoid heap allocs
+	j [common.MaxSharedSecretBsz]byte
 }
 
 // Domain separators for MultiKEM
-const (
-	G1 = 0x01
-	G2 = 0x02
-	G3 = 0x03
+var (
+	G1 = []byte{0x01}
+	G2 = []byte{0x02}
+	G3 = []byte{0x03}
 )
 
 // NewSike434 instantiates SIKE/p434 KEM.
@@ -214,13 +219,12 @@ func (c *KEM) Decapsulate(secret []byte, prv *sidh.PrivateKey, pub *sidh.PublicK
 	return nil
 }
 
-// Encapsulate receives the public key and generates SIKE ciphertext and shared secret.
-// The generated ciphertext is used for authentication.
+// Encapsulate receives the public key and generates single shared secret
+// and multiple ciphertexts as described in mKEM paper. The ciphertexts
+// are stored in c.cts. Ephemeral public key is stored in ct0.
 // Error is returned in case PRNG fails. Function panics in case wrongly formated
-// input was provided.
+// input is provided.
 func (c *MultiKEM) Encapsulate(secret []byte, pub []*sidh.PublicKey) error {
-	var j [common.MaxSharedSecretBsz]byte
-
 	if !c.allocated {
 		panic("KEM unallocated")
 	}
@@ -244,7 +248,7 @@ func (c *MultiKEM) Encapsulate(secret []byte, pub []*sidh.PublicKey) error {
 
 	// mEnc^i
 	c.shake.Reset()
-	_, _ = c.shake.Write([]byte{G1})
+	_, _ = c.shake.Write(G1)
 	_, _ = c.shake.Write(c.msg[:skA.Params.MsgLen])
 	_, _ = c.shake.Read(skA.Scalar)
 
@@ -258,11 +262,11 @@ func (c *MultiKEM) Encapsulate(secret []byte, pub []*sidh.PublicKey) error {
 		if sidh.KeyVariantSike != pkB.KeyVariant {
 			panic("Wrong type of public key")
 		}
-		skA.DeriveSecret(j[:], pkB)
+		skA.DeriveSecret(c.j[:], pkB)
 		// H(j)
 		c.shake.Reset()
-		_, _ = c.shake.Write([]byte{G2})
-		_, _ = c.shake.Write(j[:skA.Params.SharedSecretSize])
+		_, _ = c.shake.Write(G2)
+		_, _ = c.shake.Write(c.j[:skA.Params.SharedSecretSize])
 		_, _ = c.shake.Read(c.cts[ct_i][:skA.Params.MsgLen])
 		for i := 0; i < skA.Params.MsgLen; i++ {
 			// ct[i]
@@ -272,18 +276,17 @@ func (c *MultiKEM) Encapsulate(secret []byte, pub []*sidh.PublicKey) error {
 
 	// K = H(msg)
 	c.shake.Reset()
-	_, _ = c.shake.Write([]byte{G3})
+	_, _ = c.shake.Write(G3)
 	_, _ = c.shake.Write(c.msg)
 	_, _ = c.shake.Read(secret[:c.SharedSecretSize()])
 	return nil
 }
 
-// Decapsulate given the keypair and a ciphertext as inputs, Decapsulate outputs a shared
-// secret if plaintext verifies correctly, otherwise function outputs random value.
+// mKEM Decapsulate - given the keypair and a ciphertext as inputs. Decapsulate outputs
+// a shared secret if plaintext verifies correctly, otherwise function outputs random value.
 // Decapsulation may panic in case input is wrongly formated, in particular, size of
 // the 'ciphertext' must be exactly equal to c.CiphertextSize().
 func (c *MultiKEM) Decapsulate(secret []byte, prv *sidh.PrivateKey, pub *sidh.PublicKey, ctext []byte) error {
-	var j [common.MaxSharedSecretBsz]byte
 	var m [common.MaxMsgBsz]byte
 	var r [common.MaxPublicKeySz]byte
 	var cti [common.MaxMsgBsz]byte
@@ -315,15 +318,15 @@ func (c *MultiKEM) Decapsulate(secret []byte, prv *sidh.PrivateKey, pub *sidh.Pu
 			KeyVariant: sidh.KeyVariantSidhA},
 		Scalar: c.secretBytes}
 	var pkA = sidh.NewPublicKey(c.params.ID, sidh.KeyVariantSidhA)
-	err := pkA.Import(c.ct0[:c.PublicKeySize()])
+	err := pkA.Import(c.ct0[:c.params.PublicKeySize])
 	if err != nil {
 		return err
 	}
-	prv.DeriveSecret(j[:], pkA)
+	prv.DeriveSecret(c.j[:], pkA)
 
 	c.shake.Reset()
-	_, _ = c.shake.Write([]byte{G2})
-	_, _ = c.shake.Write(j[:prv.Params.SharedSecretSize])
+	_, _ = c.shake.Write(G2)
+	_, _ = c.shake.Write(c.j[:prv.Params.SharedSecretSize])
 	_, _ = c.shake.Read(m[:prv.Params.MsgLen])
 	for i := 0; i < prv.Params.MsgLen; i++ {
 		m[i] ^= ctext[i]
@@ -331,7 +334,7 @@ func (c *MultiKEM) Decapsulate(secret []byte, prv *sidh.PrivateKey, pub *sidh.Pu
 
 	// Re-encrypt
 	c.shake.Reset()
-	_, _ = c.shake.Write([]byte{G1})
+	_, _ = c.shake.Write(G1)
 	_, _ = c.shake.Write(m[:skA.Params.MsgLen])
 	_, _ = c.shake.Read(skA.Scalar)
 
@@ -341,11 +344,11 @@ func (c *MultiKEM) Decapsulate(secret []byte, prv *sidh.PrivateKey, pub *sidh.Pu
 	// ct0' = r
 	pkA.Export(r[:c.params.PublicKeySize])
 
-	skA.DeriveSecret(j[:], pub)
+	skA.DeriveSecret(c.j[:], pub)
 	c.shake.Reset()
 	// H(j)
-	_, _ = c.shake.Write([]byte{G2})
-	_, _ = c.shake.Write(j[:skA.Params.SharedSecretSize])
+	_, _ = c.shake.Write(G2)
+	_, _ = c.shake.Write(c.j[:skA.Params.SharedSecretSize])
 	_, _ = c.shake.Read(cti[:skA.Params.MsgLen])
 	for i := 0; i < skA.Params.MsgLen; i++ {
 		cti[i] ^= c.msg[i]
@@ -357,12 +360,12 @@ func (c *MultiKEM) Decapsulate(secret []byte, prv *sidh.PrivateKey, pub *sidh.Pu
 	//
 	// See more details in "On the security of supersingular isogeny cryptosystems"
 	// (S. Galbraith, et al., 2016, ePrint #859).
-	mask := subtle.ConstantTimeCompare(r[:c.params.PublicKeySize], c.ct0[:c.PublicKeySize()])
+	mask := subtle.ConstantTimeCompare(r[:c.params.PublicKeySize], c.ct0[:c.params.PublicKeySize])
 	mask &= subtle.ConstantTimeCompare(ctext[:skA.Params.MsgLen], cti[:skA.Params.MsgLen])
 	common.Cpick(mask, m[:c.params.MsgLen], m[:c.params.MsgLen], prv.S)
 
 	c.shake.Reset()
-	_, _ = c.shake.Write([]byte{G3})
+	_, _ = c.shake.Write(G3)
 	_, _ = c.shake.Write(m[:c.params.MsgLen])
 	_, _ = c.shake.Read(secret[:c.SharedSecretSize()])
 

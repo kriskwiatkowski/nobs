@@ -7,6 +7,10 @@ import (
 	. "github.com/henrydcase/nobs/dh/sidh/common"
 )
 
+func init() {
+	HasADXandBMI2 = false
+}
+
 // -----------------------------------------------------------------------------
 // Functions for traversing isogeny trees acoording to strategy. Key type 'A' is
 //

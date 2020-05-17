@@ -2,8 +2,18 @@ package mkem
 
 import (
 	"bytes"
+	"crypto/rand"
 	"testing"
+
+	"github.com/henrydcase/nobs/dh/csidh"
+	"github.com/henrydcase/nobs/drbg"
 )
+
+var sPKE PKE
+var mPKE MultiPKE
+
+var testSKS []csidh.PrivateKey
+var testPKS []csidh.PublicKey
 
 // helper
 func Ok(t testing.TB, f bool, msg string) {
@@ -13,122 +23,87 @@ func Ok(t testing.TB, f bool, msg string) {
 	}
 }
 
-// helper
-func OkE(t testing.TB, f error, msg string) {
-	t.Helper()
-	if f != nil {
-		t.Error(msg)
-	}
-}
-
-var keys10 [10]keypair
-var keys100 [100]keypair
-var keys1000 [1000]keypair
-var meCsidh MultiEnc_csidh
-
-/*
 func init() {
-	for i, _ := range keys10 {
-		keys10[i] = meCsidh.NewKeypair()
+	var tmp [32]byte
+	var rng *drbg.CtrDrbg
+
+	rand.Read(tmp[:])
+	rng = drbg.NewCtrDrbg()
+	if !rng.Init(tmp[:], nil) {
+		panic("Can't initialize DRBG")
 	}
 
-	for i, _ := range keys100 {
-		keys100[i] = meCsidh.NewKeypair()
+	sPKE.Allocate(rng)
+	mPKE.Allocate(10, rng)
+
+	testSKS = make([]csidh.PrivateKey, len(mPKE.Cts))
+	testPKS = make([]csidh.PublicKey, len(mPKE.Cts))
+
+	for i, _ := range mPKE.Cts {
+		csidh.GeneratePrivateKey(&testSKS[i], mPKE.Rng)
+		csidh.GeneratePublicKey(&testPKS[i], &testSKS[i], mPKE.Rng)
 	}
+
 }
-*/
 
-func mct_to_ct(ct *ciphertext, mct *multi_ciphertext, idx int) {
-	copy(ct.u[:], mct.u[:])
-	copy(ct.v[:], mct.v[idx][:])
+func getCiphertext(ct *ciphertext, mPKE *MultiPKE, i int) {
+	copy(ct.U[:], mPKE.Ct0[:])
+	copy(ct.V[:], mPKE.Cts[i][:])
 }
 
 func TestSinglePKE(t *testing.T) {
-	k := meCsidh.NewKeypair()
-	var msg [64]byte
-	ct := meCsidh.Enc(&k.pk, &msg)
-	pt := meCsidh.Dec(&k.sk, &ct)
-	Ok(t,
-		bytes.Equal(pt[:], msg[:]),
-		"Decryption failed")
+	var pk csidh.PublicKey
+	var sk csidh.PrivateKey
+
+	csidh.GeneratePrivateKey(&sk, sPKE.Rng)
+	csidh.GeneratePublicKey(&pk, &sk, sPKE.Rng)
+
+	var msg [16]byte
+	ct := sPKE.Enc(&pk, &msg)
+	pt := sPKE.Dec(&sk, &ct)
+	Ok(t, bytes.Equal(pt[:], msg[:]), "Decryption failed")
 
 	// Do it twice to ensure it works with same key pair
-	ct = meCsidh.Enc(&k.pk, &msg)
-	pt = meCsidh.Dec(&k.sk, &ct)
+	ct = sPKE.Enc(&pk, &msg)
+	pt = sPKE.Dec(&sk, &ct)
 	Ok(t, bytes.Equal(pt[:], msg[:]),
 		"Decryption failed")
 
 }
 
 func TestMultiPKE(t *testing.T) {
-	const num_keys = 10
-	var msg [64]byte
-	var keys [num_keys]keypair
+	var msg [16]byte
 	var ct ciphertext
-	var mct multi_ciphertext
 
-	mct.v = make([][64]byte, num_keys)
+	pks := make([]csidh.PublicKey, len(mPKE.Cts))
+	sks := make([]csidh.PrivateKey, len(mPKE.Cts))
 
-	for i, _ := range keys {
-		keys[i] = meCsidh.NewKeypair()
+	//	mct.Cts = make([][SharedSecretSz]byte)
+
+	for i, _ := range mPKE.Cts {
+		csidh.GeneratePrivateKey(&sks[i], mPKE.Rng)
+		csidh.GeneratePublicKey(&pks[i], &sks[i], mPKE.Rng)
 	}
 
-	// Check if it works for SinglePKE
-	for i := 0; i < len(keys); i++ {
-		ct = meCsidh.Enc(&keys[i].pk, &msg)
-		pt := meCsidh.Dec(&keys[i].sk, &ct)
-		Ok(t, bytes.Equal(pt[:], msg[:]),
-			"SinglePKE decryption failed")
-	}
-
-	meCsidh.Enc_m(keys[:], &msg, &mct)
-	for i := 0; i < len(keys); i++ {
-		mct_to_ct(&ct, &mct, i)
-		pt := meCsidh.Dec(&keys[i].sk, &ct)
+	mPKE.Encrypt(pks[:], &msg)
+	for i := 0; i < len(mPKE.Cts); i++ {
+		getCiphertext(&ct, &mPKE, i)
+		pt := sPKE.Dec(&sks[i], &ct)
 		Ok(t, bytes.Equal(pt[:], msg[:]),
 			"Multi decryption failed")
 	}
 }
 
-func benchSingleEnc(keys []keypair) {
-	var msg [64]byte
-	var num = len(keys)
-	var ct = make([]ciphertext, num)
+var MessgaeTest [16]byte
 
-	for i := 0; i < num; i++ {
-		ct[i] = meCsidh.Enc(&keys[i].pk, &msg)
+func BenchmarkEncrypt_CSIDH_p512(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_ = sPKE.Enc(&testPKS[0], &MessgaeTest)
 	}
 }
 
-func benchMultiEnc(keys []keypair) {
-	var msg [64]byte
-	var num = len(keys)
-	var mct multi_ciphertext
-	mct.v = make([][64]byte, num)
-
-	meCsidh.Enc_m(keys[:], &msg, &mct)
-}
-
-func BenchmarkCSIDH_Enc_10keys(b *testing.B) {
+func BenchmarkMultiEncrypt_CSIDH_100keys(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		benchSingleEnc(keys10[:])
-	}
-}
-
-func BenchmarkCSIDH_mEnc_10keys(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		benchMultiEnc(keys10[:])
-	}
-}
-
-func BenchmarkCSIDH_Enc_100keys(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		benchSingleEnc(keys100[:])
-	}
-}
-
-func BenchmarkCSIDH_mEnc_100keys(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		benchMultiEnc(keys100[:])
+		mPKE.Encrypt(testPKS[:], &MessgaeTest)
 	}
 }

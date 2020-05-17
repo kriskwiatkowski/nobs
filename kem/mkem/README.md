@@ -1,38 +1,57 @@
 # mKEM for cSIDH/p512
 
-Implementation of multi-KEM for done on top of cSIDH implementation from NOBS [library](github.com/henrydcase/nobs/dh/csidh).
+Implementation of multi-KEM for SIKE and multi-PKE for cSIDH.
 
-## Implementation choices
+## Implementation
 
-TODO:
-- choice of H
-- message length
-- golang
+The implementation is done in Go. Compilation requires go 1.12 or newer to compile with ``GO111MODULE=on``. Implementation is based on cSIDH and SIDH from NOBS NOBS [library](github.com/henrydcase/nobs).
 
 ## Running and benchmarking
 
-To run benchmark tests golang 1.10 is required to be installed. Following command can be used to run the benchmark tests
+To run all benchmarks use following command
+```
+make run
+```
+
+It is possible to run only subset of benchmarks. The command ``make run-cycles`` will calculate CPU cycles for encryption/encapsulation to N users. The command ``make run-ns`` will produce results in nanoseconds.
+
+
+### Results
+Benchmarks has been run on i7-8665U (Whiskey Lake) @ 1.90GHz
+
+* CPU cycle count
 
 ```
-go test -v -bench=. -run="notest"
+Test name:                | Cycle count:
+--------------------------|--------------
+bench_SIKEp434_KEM        | 1720710678
+bench_SIKEp503_KEM        | 2411750152
+bench_SIKEp751_KEM        | 7225841287
+bench_SIKEp434_mKEM       | 783353356
+bench_SIKEp503_mKEM       | 1100170053
+bench_SIKEp751_mKEM       | 3304027422
+bench_CSIDH_PKE           | 38200232832
+bench_CSIDH_mPKE          | 19203013803
 ```
 
-Results on SkyLake CPU:
+* Time in ns
 
 ```
-> go test -v -bench=. -run="notest" -benchmem
-goos: linux
-goarch: amd64
-pkg: github.com/henrydcase/nobs/kem/mkem
-BenchmarkCSIDH_Enc_10keys
-BenchmarkCSIDH_Enc_10keys-8     	       2	 761984058 ns/op	    6720 B/op	      31 allocs/op
-BenchmarkCSIDH_mEnc_10keys
-BenchmarkCSIDH_mEnc_10keys-8    	       3	 436651776 ns/op	    1426 B/op	       5 allocs/op
-BenchmarkCSIDH_Enc_100keys
-BenchmarkCSIDH_Enc_100keys-8    	       1	7883272803 ns/op	   67968 B/op	     301 allocs/op
-BenchmarkCSIDH_mEnc_100keys
-BenchmarkCSIDH_mEnc_100keys-8   	       1	3832287289 ns/op	    7312 B/op	       5 allocs/op
-PASS
-ok  	github.com/henrydcase/nobs/kem/mkem	20.691s
+./mkem.test -test.run="notest" -test.bench=BenchmarkMultiEncaps -test.cpu=1
 
+BenchmarkMultiEncaps_100keys/P-434         	       3	 357838360 ns/op
+BenchmarkMultiEncaps_100keys/P-503         	       2	 503749852 ns/op
+BenchmarkMultiEncaps_100keys/P-751         	       1	1514791804 ns/op
+
+
+./mkem.test -test.run="notest" -test.bench=BenchmarkEncaps -test.cpu=1
+BenchmarkEncaps/P-434         	     151	   7888643 ns/op
+BenchmarkEncaps/P-503         	     100	  11150691 ns/op
+BenchmarkEncaps/P-751         	      36	  34494941 ns/op
+
+./mkem.test -test.run="notest" -test.bench=BenchmarkEncrypt_CSIDH_p512 -test.cpu=1
+BenchmarkEncrypt_CSIDH_p512 	       7	 185828599 ns/op
+
+./mkem.test -test.run="notest" -test.bench=BenchmarkMultiEncrypt_CSIDH_100keys -test.cpu=1
+BenchmarkMultiEncrypt_CSIDH_100keys 	       1	1025902914 ns/op
 ```
