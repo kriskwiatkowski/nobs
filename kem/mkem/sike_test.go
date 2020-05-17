@@ -1,29 +1,47 @@
 package mkem
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/henrydcase/nobs/dh/sidh"
 	"github.com/henrydcase/nobs/dh/sidh/common"
+	"github.com/henrydcase/nobs/drbg"
 )
 
+var rng *drbg.CtrDrbg
+
+func init() {
+	var tmp [32]byte
+
+	rand.Read(tmp[:])
+	rng = drbg.NewCtrDrbg()
+	if !rng.Init(tmp[:], nil) {
+		panic("Can't initialize DRBG")
+	}
+}
+
 type sikeVec struct {
-	id      uint8
-	name    string
-	kem     *KEM
-	KatFile string
-	PkB     string
-	PrB     string
-	mkem    MultiKEM
+	id   uint8
+	name string
+	kem  *KEM
+	PkB  string
+	PrB  string
+	mkem MultiKEM
+}
+
+func init() {
+	var tmp [32]byte
+
+	rand.Read(tmp[:])
+	rng = drbg.NewCtrDrbg()
+	if !rng.Init(tmp[:], nil) {
+		panic("Can't initialize DRBG")
+	}
 }
 
 // testPanic returns true if call to function 'f' caused panic.
@@ -38,10 +56,17 @@ func testPanic(f func()) error {
 	return hasPanicked
 }
 
+// helper
+func IsOk(t testing.TB, f error, msg string) {
+	t.Helper()
+	if f != nil {
+		t.Error(msg)
+	}
+}
+
 var tdataSike = map[uint8]sikeVec{
 	sidh.Fp434: {
 		sidh.Fp434, "P-434", NewSike434(rand.Reader),
-		"testdata/PQCkemKAT_374.rsp",
 		"1BD0A2E81307B6F96461317DDF535ACC0E59C742627BAE60D27605E10FAF722D" +
 			"22A73E184CB572A12E79DCD58C6B54FB01442114CBE9010B6CAEC25D04C16C5E" +
 			"42540C1524C545B8C67614ED4183C9FA5BD0BE45A7F89FBC770EE8E7E5E391C7" +
@@ -58,7 +83,6 @@ var tdataSike = map[uint8]sikeVec{
 		MultiKEM{}},
 	sidh.Fp503: {
 		sidh.Fp503, "P-503", NewSike503(rand.Reader),
-		"testdata/PQCkemKAT_434.rsp",
 		"4032A90B6C036B7D2A83878AD116641AD319E420235A505F3F5C3DEC27C87A6C" +
 			"BA0792201D6E7B196C582D43CAF86CB2C7DEFA6598B543C946CDDF62EF9A328C" +
 			"8719B66BA5052231DAE13AF7D9CDEBB4ED327773C7AE0818F41AF1D28CD78B16" +
@@ -75,7 +99,6 @@ var tdataSike = map[uint8]sikeVec{
 			"7700AE8DC3138E97A0C3F6F002065C92A0B1B8180208", MultiKEM{}},
 	sidh.Fp751: {
 		sidh.Fp751, "P-751", NewSike751(rand.Reader),
-		"testdata/PQCkemKAT_644.rsp",
 		"E1A758EC0D418BFE86D8077B5BB169133C06C1F2A067D8B202D9D058FFC51F63" +
 			"FD26155A6577C74BA7F1A27E7BA51982517B923615DEB00BE408920A07831DF5" +
 			"978CFDDD0BF690A264353A4A16B666F90586D7F89A193CE09375D389C1379A7A" +
@@ -114,17 +137,17 @@ func testPKERoundTrip(t *testing.T, v sikeVec) {
 	pkB := sidh.NewPublicKey(params.ID, sidh.KeyVariantSike)
 	skB := sidh.NewPrivateKey(params.ID, sidh.KeyVariantSike)
 	pkHex, err := hex.DecodeString(v.PkB)
-	OkE(t, err, "Test vector wrong")
+	IsOk(t, err, "Test vector wrong")
 	skHex, err := hex.DecodeString(v.PrB)
-	OkE(t, err, "Test vector wrong")
+	IsOk(t, err, "Test vector wrong")
 	err = pkB.Import(pkHex)
-	OkE(t, err, "Public key import failed")
+	IsOk(t, err, "Public key import failed")
 	err = skB.Import(skHex)
-	OkE(t, err, "Private key import failed")
-	err = v.kem.encrypt(ct, rand.Reader, pkB, msg[:])
-	OkE(t, err, "PKE roundtrip - encryption failed")
+	IsOk(t, err, "Private key import failed")
+	err = v.kem.encrypt(ct, rng, pkB, msg[:])
+	IsOk(t, err, "PKE roundtrip - encryption failed")
 	ptLen, err := v.kem.decrypt(pt[:], skB, ct)
-	OkE(t, err, "PKE roundtrip - decription failed")
+	IsOk(t, err, "PKE roundtrip - decription failed")
 
 	if !bytes.Equal(pt[:ptLen], msg[:]) {
 		t.Errorf("Decryption failed \n got : %X\n exp : %X", pt[:ptLen], msg)
@@ -146,14 +169,14 @@ func testPKEKeyGeneration(t *testing.T, v sikeVec) {
 		msg[i] = byte(i)
 	}
 
-	err = sk.Generate(rand.Reader)
-	OkE(t, err, "PKE key generation")
+	err = sk.Generate(rng)
+	IsOk(t, err, "PKE key generation")
 	sk.GeneratePublicKey(pk)
 
-	err = v.kem.encrypt(ct, rand.Reader, pk, msg[:])
-	OkE(t, err, "PKE encryption")
+	err = v.kem.encrypt(ct, rng, pk, msg[:])
+	IsOk(t, err, "PKE encryption")
 	ptLen, err := v.kem.decrypt(pt[:], sk, ct)
-	OkE(t, err, "PKE key decryption")
+	IsOk(t, err, "PKE key decryption")
 
 	if !bytes.Equal(pt[:ptLen], msg[:]) {
 		t.Fatalf("Decryption failed \n got : %X\n exp : %X", pt, msg)
@@ -168,12 +191,12 @@ func testNegativePKE(t *testing.T, v sikeVec) {
 	var sk = sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
 
 	// Generate key
-	err = sk.Generate(rand.Reader)
-	OkE(t, err, "key generation")
+	err = sk.Generate(rng)
+	IsOk(t, err, "key generation")
 	sk.GeneratePublicKey(pk)
 
 	// bytelen(msg) - 1
-	err = v.kem.encrypt(ct, rand.Reader, pk, msg[:v.kem.params.KemSize+8-1])
+	err = v.kem.encrypt(ct, rng, pk, msg[:v.kem.params.KemSize+8-1])
 	if err == nil {
 		t.Error(msg)
 	}
@@ -196,16 +219,16 @@ func testKEMRoundTrip(t *testing.T, pkB, skB []byte, v sikeVec) {
 	var ssBsz = v.kem.SharedSecretSize()
 
 	err = pk.Import(pkB)
-	OkE(t, err, "Public key import failed")
+	IsOk(t, err, "Public key import failed")
 	err = sk.Import(skB)
-	OkE(t, err, "Private key import failed")
+	IsOk(t, err, "Private key import failed")
 
 	v.kem.Reset()
 	err = v.kem.Encapsulate(ct, ssE[:], pk)
-	OkE(t, err, "Encapsulation failed")
+	IsOk(t, err, "Encapsulation failed")
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD[:ssBsz], sk, pk, ct)
-	OkE(t, err, "Decapsulation failed")
+	IsOk(t, err, "Decapsulation failed")
 
 	if !bytes.Equal(ssE[:v.kem.SharedSecretSize()], ssD[:v.kem.SharedSecretSize()]) {
 		t.Errorf("Shared secrets from decapsulation and encapsulation differ [%s]", v.name)
@@ -219,16 +242,16 @@ func testKEMKeyGeneration(t *testing.T, v sikeVec) {
 
 	sk := sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
 	pk := sidh.NewPublicKey(v.id, sidh.KeyVariantSike)
-	OkE(t, sk.Generate(rand.Reader), "error: key generation")
+	IsOk(t, sk.Generate(rng), "error: key generation")
 	sk.GeneratePublicKey(pk)
 
 	// calculated shared secret
 	v.kem.Reset()
 	err := v.kem.Encapsulate(ct, ssE[:], pk)
-	OkE(t, err, "encapsulation failed")
+	IsOk(t, err, "encapsulation failed")
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD[:v.kem.SharedSecretSize()], sk, pk, ct)
-	OkE(t, err, "decapsulation failed")
+	IsOk(t, err, "decapsulation failed")
 
 	if !bytes.Equal(ssE[:], ssD[:]) {
 		t.Fatalf("KEM failed \n encapsulated: %X\n decapsulated: %X", ssD[:], ssE[:])
@@ -244,16 +267,16 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 
 	sk := sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
 	pk := sidh.NewPublicKey(v.id, sidh.KeyVariantSike)
-	OkE(t, sk.Generate(rand.Reader), "error: key generation")
+	IsOk(t, sk.Generate(rng), "error: key generation")
 	sk.GeneratePublicKey(pk)
 
 	v.kem.Reset()
 	err := v.kem.Encapsulate(ct, ssE[:], pk)
-	OkE(t, err, "pre-requisite for a test failed")
+	IsOk(t, err, "pre-requisite for a test failed")
 
 	// Try decapsulate too small ciphertext
 	v.kem.Reset()
-	OkE(
+	IsOk(
 		t,
 		testPanic(func() { _ = v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ct[:len(ct)-2]) }),
 		"Decapsulation must panic if ciphertext is too small")
@@ -261,7 +284,7 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 	ctTmp := make([]byte, len(ct)+1)
 	// Try decapsulate too big ciphertext
 	v.kem.Reset()
-	OkE(
+	IsOk(
 		t,
 		testPanic(func() { _ = v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ctTmp) }),
 		"Decapsulation must panic if ciphertext is too big")
@@ -270,7 +293,7 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 	ct[0] = ct[0] - 1
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD[:ssBsz], sk, pk, ct)
-	OkE(t, err, "decapsulation returns error when invalid ciphertext provided")
+	IsOk(t, err, "decapsulation returns error when invalid ciphertext provided")
 
 	if bytes.Equal(ssE[:], ssD[:]) {
 		// no idea how this could ever happen, but it would be very bad
@@ -281,14 +304,14 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 	pkSidh := sidh.NewPublicKey(v.id, sidh.KeyVariantSidhB)
 	prSidh := sidh.NewPrivateKey(v.id, sidh.KeyVariantSidhB)
 	v.kem.Reset()
-	OkE(
+	IsOk(
 		t,
 		testPanic(func() { _ = v.kem.Encapsulate(ct, ssE[:], pkSidh) }),
 		"encapsulation accepts SIDH public key")
 
 	// Try decapsulating with SIDH key
 	v.kem.Reset()
-	OkE(
+	IsOk(
 		t,
 		testPanic(func() { _ = v.kem.Decapsulate(ssD[:ssBsz], prSidh, pk, ct) }),
 		"encapsulation accepts SIDH public key")
@@ -305,18 +328,18 @@ func testNegativeKEMSameWrongResult(t *testing.T, v sikeVec) {
 
 	sk := sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
 	pk := sidh.NewPublicKey(v.id, sidh.KeyVariantSike)
-	OkE(t, sk.Generate(rand.Reader), "error: key generation")
+	IsOk(t, sk.Generate(rng), "error: key generation")
 	sk.GeneratePublicKey(pk)
 
 	v.kem.Reset()
 	err := v.kem.Encapsulate(ct, ssE[:], pk)
-	OkE(t, err, "pre-requisite for a test failed")
+	IsOk(t, err, "pre-requisite for a test failed")
 
 	// make ciphertext wrong
 	ct[0] = ct[0] - 1
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD1[:ssBsz], sk, pk, ct)
-	OkE(t, err, "pre-requisite for a test failed")
+	IsOk(t, err, "pre-requisite for a test failed")
 
 	// change secret keysecond decapsulation must be done with same, but imported private key
 	var expSk [common.MaxSikePrivateKeyBsz]byte
@@ -324,12 +347,12 @@ func testNegativeKEMSameWrongResult(t *testing.T, v sikeVec) {
 
 	// create new private key
 	sk = sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
-	OkE(t, sk.Import(expSk[:sk.Size()]), "import failed")
+	IsOk(t, sk.Import(expSk[:sk.Size()]), "import failed")
 
 	// try decapsulating again.
 	v.kem.Reset()
 	err = v.kem.Decapsulate(ssD2[:ssBsz], sk, pk, ct)
-	OkE(t, err, "pre-requisite for a test failed")
+	IsOk(t, err, "pre-requisite for a test failed")
 
 	// ssD1 must be same as ssD2
 	if !bytes.Equal(ssD1[:], ssD2[:]) {
@@ -343,96 +366,7 @@ func testNegativeKEMSameWrongResult(t *testing.T, v sikeVec) {
 	}
 }
 
-func testKAT(t *testing.T, v sikeVec) {
-	ssGot := make([]byte, v.kem.SharedSecretSize())
-	testDecapsulation := func(pk, sk, ct, ssExpected []byte) {
-		var pubKey = sidh.NewPublicKey(v.id, sidh.KeyVariantSike)
-		var prvKey = sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
-		if pubKey.Import(pk) != nil || prvKey.Import(sk) != nil {
-			panic("sike test: can't load KAT")
-		}
-
-		err := v.kem.Decapsulate(ssGot, prvKey, pubKey, ct)
-		OkE(t, err, "sike test: can't perform degcapsulation KAT")
-		if !bytes.Equal(ssGot, ssExpected) {
-			t.Fatalf("KAT decapsulation failed\n")
-		}
-	}
-
-	readAndCheckLine := func(r *bufio.Reader) []byte {
-		// Read next line from buffer
-		line, isPrefix, err := r.ReadLine()
-		if err != nil || isPrefix {
-			panic("Wrong format of input file")
-		}
-
-		// Function expects that line is in format "KEY = HEX_VALUE". Get
-		// value, which should be a hex string
-		hexst := strings.Split(string(line), "=")[1]
-		hexst = strings.TrimSpace(hexst)
-		// Convert value to byte string
-		ret, err := hex.DecodeString(hexst)
-		if err != nil {
-			panic("Wrong format of input file")
-		}
-		return ret
-	}
-
-	testKeygen := func(pk, sk []byte) bool {
-		// Import provided private key
-		var prvKey = sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
-		var pubKey = sidh.NewPublicKey(v.id, sidh.KeyVariantSike)
-		var pubKeyBytes = make([]byte, pubKey.Size())
-		OkE(t, prvKey.Import(sk), "Can't load KAT")
-
-		// Generate public key
-		prvKey.GeneratePublicKey(pubKey)
-		pubKey.Export(pubKeyBytes)
-		return bytes.Equal(pubKeyBytes, pk)
-	}
-
-	f, err := os.Open(v.KatFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	r := bufio.NewReader(f)
-	for {
-		line, isPrefix, err := r.ReadLine()
-		if err != nil || isPrefix {
-			if err == io.EOF {
-				break
-			} else {
-				t.Fatal(err)
-			}
-		}
-		if len(strings.TrimSpace(string(line))) == 0 || line[0] == '#' {
-			continue
-		}
-
-		// count
-		_ = strings.Split(string(line), "=")[1]
-		// seed
-		_ = readAndCheckLine(r)
-		// pk
-		pk := readAndCheckLine(r)
-		// sk (secret key in test vector is concatenation of
-		// MSG + SECRET_BOB_KEY + PUBLIC_BOB_KEY. We use only MSG+SECRET_BOB_KEY
-		sk := readAndCheckLine(r)
-		sk = sk[:v.kem.params.MsgLen+int(v.kem.params.B.SecretByteLen)]
-		// ct
-		ct := readAndCheckLine(r)
-		// ss
-		ss := readAndCheckLine(r)
-
-		testKeygen(pk, sk)
-		testDecapsulation(pk, sk, ct, ss)
-		testKEMRoundTrip(t, pk, sk, v)
-	}
-}
-
 // Test MultiKEM
-
 func TestMultiKemRoundTrip(t *testing.T) {
 	var err error
 	var mkem MultiKEM
@@ -449,16 +383,16 @@ func TestMultiKemRoundTrip(t *testing.T) {
 	for i, _ := range mkem.cts {
 		pks[i] = mkem.NewPublicKey()
 		sks[i] = mkem.NewPrivateKey()
-		err = sks[i].Generate(rand.Reader)
-		OkE(t, err, "PKE key generation")
+		err = sks[i].Generate(rng)
+		IsOk(t, err, "PKE key generation")
 		sks[i].GeneratePublicKey(pks[i])
 	}
 
 	err = mkem.Encapsulate(ss_out[:], pks)
-	OkE(t, err, "Multi KEM failed")
+	IsOk(t, err, "Multi KEM failed")
 	for i := 0; i < len(mkem.cts); i++ {
 		err = mkem.Decapsulate(ss_in[:], sks[i], pks[i], mkem.cts[i][:mkem.KemSize()])
-		OkE(t, err, "Decaps failed")
+		IsOk(t, err, "Decaps failed")
 		Ok(t, bytes.Equal(ss_out[:mkem.KemSize()], ss_in[:mkem.KemSize()]), "shared secret equal")
 	}
 }
@@ -480,7 +414,6 @@ func TestPKEKeyGeneration(t *testing.T) { testSike(t, &tdataSike, testPKEKeyGene
 func TestNegativePKE(t *testing.T)      { testSike(t, &tdataSike, testNegativePKE) }
 func TestKEMKeyGeneration(t *testing.T) { testSike(t, &tdataSike, testKEMKeyGeneration) }
 func TestNegativeKEM(t *testing.T)      { testSike(t, &tdataSike, testNegativeKEM) }
-func TestKAT(t *testing.T)              { testSike(t, &tdataSike, testKAT) }
 func TestNegativeKEMSameWrongResult(t *testing.T) {
 	testSike(t, &tdataSike, testNegativeKEMSameWrongResult)
 }
@@ -489,9 +422,9 @@ func TestKEMRoundTrip(t *testing.T) {
 	for _, val := range tdataSike {
 		//		fmt.Printf("\tTesting: %s\n", val.name)
 		pk, err := hex.DecodeString(val.PkB)
-		OkE(t, err, "public key B not a number")
+		IsOk(t, err, "public key B not a number")
 		sk, err := hex.DecodeString(val.PrB)
-		OkE(t, err, "private key B not a number")
+		IsOk(t, err, "private key B not a number")
 		testKEMRoundTrip(t, pk, sk, val)
 	}
 }
@@ -510,7 +443,7 @@ func benchSike(t *testing.B, m *map[uint8]sikeVec, f func(*testing.B, sikeVec)) 
 func benchKeygen(b *testing.B, v sikeVec) {
 	pub := sidh.NewPublicKey(v.id, sidh.KeyVariantSike)
 	prv := sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
-	_ = prv.Generate(rand.Reader)
+	_ = prv.Generate(rng)
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -522,7 +455,7 @@ func benchmarkEncaps(b *testing.B, v sikeVec) {
 	pub := sidh.NewPublicKey(v.id, sidh.KeyVariantSike)
 	prv := sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
 
-	if prv.Generate(rand.Reader) != nil {
+	if prv.Generate(rng) != nil {
 		b.FailNow()
 	}
 	prv.GeneratePublicKey(pub)
@@ -547,7 +480,7 @@ func benchmarkMultiEncaps_100keys(b *testing.B, v sikeVec) {
 	// create keys
 	for i, _ := range v.mkem.cts {
 		pks[i] = v.mkem.NewPublicKey()
-		_ = sk.Generate(rand.Reader)
+		_ = sk.Generate(rng)
 		sk.GeneratePublicKey(pks[i])
 	}
 
@@ -567,7 +500,7 @@ func benchmarkDecaps(b *testing.B, v sikeVec) {
 	pkB := sidh.NewPublicKey(v.id, sidh.KeyVariantSike)
 	prvB := sidh.NewPrivateKey(v.id, sidh.KeyVariantSike)
 
-	if prvA.Generate(rand.Reader) != nil || prvB.Generate(rand.Reader) != nil {
+	if prvA.Generate(rng) != nil || prvB.Generate(rng) != nil {
 		b.FailNow()
 	}
 
@@ -589,10 +522,12 @@ func benchmarkDecaps(b *testing.B, v sikeVec) {
 	}
 }
 
-func BenchmarkKeygen(b *testing.B)      { benchSike(b, &tdataSike, benchKeygen) }
-func BenchmarkEncaps(b *testing.B)      { benchSike(b, &tdataSike, benchmarkEncaps) }
-func BenchmarkMultiEncaps(b *testing.B) { benchSike(b, &tdataSike, benchmarkMultiEncaps_100keys) }
-func BenchmarkDecaps(b *testing.B)      { benchSike(b, &tdataSike, benchmarkDecaps) }
+func BenchmarkKeygen(b *testing.B) { benchSike(b, &tdataSike, benchKeygen) }
+func BenchmarkEncaps(b *testing.B) { benchSike(b, &tdataSike, benchmarkEncaps) }
+func BenchmarkMultiEncaps_100keys(b *testing.B) {
+	benchSike(b, &tdataSike, benchmarkMultiEncaps_100keys)
+}
+func BenchmarkDecaps(b *testing.B) { benchSike(b, &tdataSike, benchmarkDecaps) }
 
 func ExampleKEM() {
 	// Allice's key pair
@@ -602,19 +537,19 @@ func ExampleKEM() {
 	prvB := sidh.NewPrivateKey(sidh.Fp503, sidh.KeyVariantSike)
 	pubB := sidh.NewPublicKey(sidh.Fp503, sidh.KeyVariantSike)
 	// Generate keypair for Allice
-	err := prvA.Generate(rand.Reader)
+	err := prvA.Generate(rng)
 	if err != nil {
 		panic(err)
 	}
 	prvA.GeneratePublicKey(pubA)
 	// Generate keypair for Bob
-	err = prvB.Generate(rand.Reader)
+	err = prvB.Generate(rng)
 	if err != nil {
 		panic(err)
 	}
 	prvB.GeneratePublicKey(pubB)
 	// Initialize internal KEM structures
-	var kem = NewSike503(rand.Reader)
+	var kem = NewSike503(rng)
 	// Create buffers for ciphertext, shared secret received
 	// from encapsulation and shared secret from decapsulation
 	ct := make([]byte, kem.CiphertextSize())
