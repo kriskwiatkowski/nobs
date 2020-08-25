@@ -116,9 +116,6 @@ func (c *state) Clone() ShakeHash {
 // Its generic security strength is 128 bits against all attacks if at
 // least 32 bytes of its output are used.
 func NewShake128() ShakeHash {
-	if h := newShake128Asm(); h != nil {
-		return h
-	}
 	return &state{rate: rate128, dsbyte: dsbyteShake}
 }
 
@@ -126,9 +123,6 @@ func NewShake128() ShakeHash {
 // Its generic security strength is 256 bits against all attacks if
 // at least 64 bytes of its output are used.
 func NewShake256() ShakeHash {
-	if h := newShake256Asm(); h != nil {
-		return h
-	}
 	return &state{rate: rate256, dsbyte: dsbyteShake}
 }
 

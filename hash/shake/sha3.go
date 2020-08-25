@@ -4,8 +4,6 @@
 
 package shake
 
-import "hash"
-
 // spongeDirection indicates the direction bytes are flowing through the sponge.
 type spongeDirection int
 
@@ -193,7 +191,3 @@ func (d *state) Sum(in []byte) []byte {
 	dup.Read(hash)
 	return append(in, hash...)
 }
-
-// Only use this function if you require compatibility with an existing cryptosystem
-// that uses non-standard padding. All other users should use New256 instead.
-func NewLegacyKeccak256() hash.Hash { return &state{rate: 136, outputLen: 32, dsbyte: 0x01} }
