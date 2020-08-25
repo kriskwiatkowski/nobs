@@ -287,3 +287,37 @@ func (prv *PrivateKey) DeriveSecret(ss []byte, pub *PublicKey) {
 		panic("Field not supported")
 	}
 }
+
+// Alternative API
+// TODO: this looks better than the one above - swap it
+func (c *Key) Init(fieldID uint8, v KeyVariant) {
+	c.Params = common.Params(fieldID)
+	if c.Params == nil {
+		panic("Params nil")
+	}
+	c.KeyVariant = v
+}
+
+func (c *PrivateKey) Init(fieldId uint8, v KeyVariant) {
+	c.Key.Init(fieldId, v)
+	if (v & KeyVariantSidhA) == KeyVariantSidhA {
+		c.Scalar = make([]byte, c.Params.A.SecretByteLen)
+	} else {
+		c.Scalar = make([]byte, c.Params.B.SecretByteLen)
+	}
+	if v == KeyVariantSike {
+		c.S = make([]byte, c.Params.MsgLen)
+	}
+}
+
+func GeneratePrivateKey(prv *PrivateKey, rng io.Reader) {
+	prv.Generate(rng)
+}
+
+func GeneratePublicKey(pub *PublicKey, prv *PrivateKey) {
+	prv.GeneratePublicKey(pub)
+}
+
+func DeriveSecret(ss []byte, pub *PublicKey, prv *PrivateKey) {
+	prv.DeriveSecret(ss, pub)
+}
