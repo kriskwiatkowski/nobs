@@ -4,9 +4,8 @@
 
 package sha3
 
-// This file defines the ShakeHash interface, and provides
-// functions for creating SHAKE and cSHAKE instances, as well as utility
-// functions for hashing bytes to arbitrary-length output.
+// SHAKE128 and SHAKE256 are FIPS approved XOFs. The cSHAKE128/256
+// are SHAKE-based XOFs supporting domain separation.
 //
 //
 // SHAKE implementation is based on FIPS PUB 202 [1]

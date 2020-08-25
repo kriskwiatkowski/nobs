@@ -49,7 +49,8 @@ type state struct {
 	state     spongeDirection // whether the sponge is absorbing or squeezing
 }
 
-// BlockSize returns the rate of sponge underlying this hash function.
+// BlockSize returns block size in bytes. Corresponds to the input
+// block size B of the HMAC
 func (d *state) BlockSize() int { return d.rate }
 
 // Size returns the output size of the hash function in bytes.
