@@ -113,7 +113,7 @@ func TestKeccakKats(t *testing.T) {
 				d.Write(in[:kat.Length/8])
 				got := strings.ToUpper(hex.EncodeToString(d.Sum(nil)))
 				if got != kat.Digest {
-					t.Errorf("function=%s, implementation=%s, length=%d\nmessage:\n %s\ngot:\n  %s\nwanted:\n %s",
+					t.Errorf("function=%s, implementation=%s, length=%d\nmessage:\n %s\ngot:\n %s\nwanted:\n %s",
 						algo, impl, kat.Length, kat.Message, got, kat.Digest)
 					t.Logf("wanted %+v", kat)
 					t.FailNow()
@@ -121,7 +121,6 @@ func TestKeccakKats(t *testing.T) {
 				continue
 			}
 		}
-
 		for algo, v := range testShakes {
 			for _, kat := range katSet.Kats[algo] {
 				N, err := hex.DecodeString(kat.N)
@@ -159,7 +158,7 @@ func TestKeccakKats(t *testing.T) {
 // small input buffers.
 func TestUnalignedWrite(t *testing.T) {
 	testUnalignedAndGeneric(t, func(impl string) {
-		buf := sequentialBytes(0x10000)
+		buf := generateData(0x10000)
 		for alg, df := range testDigests {
 			d := df()
 			d.Reset()
@@ -273,8 +272,16 @@ func TestSqueezing(t *testing.T) {
 	})
 }
 
-// sequentialBytes produces a buffer of size consecutive bytes 0x00, 0x01, ..., used for testing.
-func sequentialBytes(size int) []byte {
+func doSum(h hash.Hash, data []byte) (digest []byte) {
+	half := int(len(data) / 2)
+	h.Write(data[:half])
+	h.Write(data[half:])
+	digest = h.Sum(data[:0])
+	return
+}
+
+// generateData produces a buffer of size consecutive bytes 0x00, 0x01, ..., used for testing.
+func generateData(size int) []byte {
 	result := make([]byte, size)
 	for i := range result {
 		result[i] = byte(i)
@@ -289,12 +296,12 @@ func TestReset(t *testing.T) {
 	for _, v := range testShakes {
 		// Calculate hash for the first time
 		c := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
-		c.Write(sequentialBytes(0x100))
+		c.Write(generateData(0x100))
 		c.Read(out1)
 
 		// Calculate hash again
 		c.Reset()
-		c.Write(sequentialBytes(0x100))
+		c.Write(generateData(0x100))
 		c.Read(out2)
 
 		if !bytes.Equal(out1, out2) {
@@ -306,7 +313,7 @@ func TestReset(t *testing.T) {
 func TestClone(t *testing.T) {
 	out1 := make([]byte, 16)
 	out2 := make([]byte, 16)
-	in := sequentialBytes(0x100)
+	in := generateData(0x100)
 
 	for _, v := range testShakes {
 		h1 := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
@@ -337,19 +344,22 @@ func BenchmarkPermutationFunction(b *testing.B) {
 }
 
 // benchmarkHash tests the speed to hash num buffers of buflen each.
-func benchmarkHash(b *testing.B, h hash.Hash, size, num int) {
+// This function uses heap
+func benchmarkHashChunked(b *testing.B, h hash.Hash, size, num int) {
 	b.StopTimer()
-	h.Reset()
-	data := sequentialBytes(size)
+	data := generateData(size)
+	digestBuf := make([]byte, h.Size())
 	b.SetBytes(int64(size * num))
 	b.StartTimer()
 
-	var state []byte
 	for i := 0; i < b.N; i++ {
+		h.Reset()
 		for j := 0; j < num; j++ {
 			h.Write(data)
 		}
-		state = h.Sum(state[:0])
+		digestBuf = h.Sum(digestBuf[:])
+		// needed to avoid alocations
+		digestBuf = digestBuf[:0]
 	}
 	b.StopTimer()
 	h.Reset()
@@ -359,9 +369,8 @@ func benchmarkHash(b *testing.B, h hash.Hash, size, num int) {
 // require a copy on reading output.
 func benchmarkShake(b *testing.B, h ShakeHash, size, num int) {
 	b.StopTimer()
-	h.Reset()
-	data := sequentialBytes(size)
-	d := make([]byte, 32)
+	out := make([]byte, 32)
+	data := generateData(size)
 
 	b.SetBytes(int64(size * num))
 	b.StartTimer()
@@ -371,21 +380,61 @@ func benchmarkShake(b *testing.B, h ShakeHash, size, num int) {
 		for j := 0; j < num; j++ {
 			h.Write(data)
 		}
-		h.Read(d)
+		h.Read(out[:])
 	}
 }
 
-func BenchmarkSha3_512_MTU(b *testing.B) { benchmarkHash(b, New512(), 1350, 1) }
-func BenchmarkSha3_384_MTU(b *testing.B) { benchmarkHash(b, New384(), 1350, 1) }
-func BenchmarkSha3_256_MTU(b *testing.B) { benchmarkHash(b, New256(), 1350, 1) }
-func BenchmarkSha3_224_MTU(b *testing.B) { benchmarkHash(b, New224(), 1350, 1) }
+var domainString = []byte("SHAKE")
+var customString = []byte("CustomString")
 
-func BenchmarkShake128_MTU(b *testing.B)  { benchmarkShake(b, NewShake128(), 1350, 1) }
-func BenchmarkShake256_MTU(b *testing.B)  { benchmarkShake(b, NewShake256(), 1350, 1) }
-func BenchmarkShake256_16x(b *testing.B)  { benchmarkShake(b, NewShake256(), 16, 1024) }
-func BenchmarkShake256_1MiB(b *testing.B) { benchmarkShake(b, NewShake256(), 1024, 1024) }
+// benchmarkShake is specialized to the Shake instances, which don't
+// require a copy on reading output.
+func benchmarkCShake(b *testing.B, f func(N, S []byte) ShakeHash, size, num int) {
+	b.StopTimer()
+	h := f(domainString, customString)
+	out := make([]byte, 32)
+	data := generateData(size)
 
-func BenchmarkSha3_512_1MiB(b *testing.B) { benchmarkHash(b, New512(), 1024, 1024) }
+	b.SetBytes(int64(size * num))
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		h.Reset()
+		for j := 0; j < num; j++ {
+			h.Write(data)
+		}
+		h.Read(out[:])
+	}
+}
+
+func BenchmarkSha3Chunk_x01(b *testing.B) {
+	b.Run("SHA-3/224", func(b *testing.B) { benchmarkHashChunked(b, New224(), 2047, 1) })
+	b.Run("SHA-3/256", func(b *testing.B) { benchmarkHashChunked(b, New256(), 2047, 1) })
+	b.Run("SHA-3/384", func(b *testing.B) { benchmarkHashChunked(b, New384(), 2047, 1) })
+	b.Run("SHA-3/512", func(b *testing.B) { benchmarkHashChunked(b, New512(), 2047, 1) })
+}
+
+func BenchmarkSha3Chunk_x16(b *testing.B) {
+	b.Run("SHA-3/224", func(b *testing.B) { benchmarkHashChunked(b, New224(), 16, 1024) })
+	b.Run("SHA-3/256", func(b *testing.B) { benchmarkHashChunked(b, New256(), 16, 1024) })
+	b.Run("SHA-3/384", func(b *testing.B) { benchmarkHashChunked(b, New384(), 16, 1024) })
+	b.Run("SHA-3/512", func(b *testing.B) { benchmarkHashChunked(b, New512(), 16, 1024) })
+}
+
+func BenchmarkShake_x01(b *testing.B) {
+	b.Run("SHAKE-128", func(b *testing.B) { benchmarkShake(b, NewShake128(), 1350, 1) })
+	b.Run("SHAKE-256", func(b *testing.B) { benchmarkShake(b, NewShake256(), 1350, 1) })
+}
+
+func BenchmarkShake_x16(b *testing.B) {
+	b.Run("SHAKE-128", func(b *testing.B) { benchmarkShake(b, NewShake128(), 16, 1024) })
+	b.Run("SHAKE-256", func(b *testing.B) { benchmarkShake(b, NewShake256(), 16, 1024) })
+}
+
+func BenchmarkCShake(b *testing.B) {
+	b.Run("cSHAKE-128", func(b *testing.B) { benchmarkCShake(b, NewCShake128, 2047, 1) })
+	b.Run("cSHAKE-256", func(b *testing.B) { benchmarkCShake(b, NewCShake256, 2047, 1) })
+}
 
 func Example_sum() {
 	buf := []byte("some data to hash")
@@ -445,4 +494,15 @@ func ExampleCShake256() {
 	//a8db03e71f3e4da5c4eee9d28333cdd355f51cef3c567e59be5beb4ecdbb28f0
 	//a90a4c6ca9af2156eba43dc8398279e6b60dcd56fb21837afe6c308fd4ceb05b9dd98c6ee866ca7dc5a39d53e960f400bcd5a19c8a2d6ec6459f63696543a0d8
 	//85e73a72228d08b46515553ca3a29d47df3047e5d84b12d6c2c63e579f4fd1105716b7838e92e981863907f434bfd4443c9e56ea09da998d2f9b47db71988109
+}
+
+func ExampleSum256() {
+	d := generateData(32)
+	var data [32]byte
+	h := New256()
+	h.Write(d)
+	s1 := h.Sum(data[:0])
+	fmt.Printf("%X\n", s1)
+	//Output:
+	// 050A48733BD5C2756BA95C5828CC83EE16FABCD3C086885B7744F84A0F9E0D94
 }
