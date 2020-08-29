@@ -7,7 +7,9 @@
 
 package sha3
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 // A storageBuf is an aligned array of maxRate bytes.
 type storageBuf [maxRate / 8]uint64
@@ -57,6 +59,7 @@ func copyOutUnaligned(d *state, buf []byte) {
 	copy(buf, ab[:])
 }
 
+// TODO: remove this assignment
 var (
 	xorIn   = xorInUnaligned
 	copyOut = copyOutUnaligned

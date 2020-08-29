@@ -76,7 +76,7 @@ func (d *digest) Write(input []byte) (nn int, err error) {
 
 	// this eventually could be done in d.compress
 	copy(d.b[:], input[nblocks*d.BlockSize():])
-	return
+	return len(input), nil
 }
 
 func (d *digest) Sum(in []byte) []byte {

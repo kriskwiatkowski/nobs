@@ -6,14 +6,6 @@ package sha3
 
 // SHAKE128 and SHAKE256 are FIPS approved XOFs. The cSHAKE128/256
 // are SHAKE-based XOFs supporting domain separation.
-//
-//
-// SHAKE implementation is based on FIPS PUB 202 [1]
-// cSHAKE implementations is based on NIST SP 800-185 [2]
-//
-// [1] https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
-// [2] https://doi.org/10.6028/NIST.SP.800-185
-
 import (
 	"encoding/binary"
 	"io"
@@ -44,18 +36,17 @@ type cshakeState struct {
 
 	// initBlock is the cSHAKE specific initialization set of bytes. It is initialized
 	// by newCShake function and stores concatenation of N followed by S, encoded
-	// by the method specified in 3.3 of [1].
-	// It is stored here in order for Reset() to be able to put context into
-	// initial state.
+	// by the method specified in 3.3 of [1] and padded with bytepad function.
+	// Used by Reset() to restore initial state.
 	initBlock []byte
 }
 
 // Consts for configuring initial SHA-3 state
 const (
-	dsbyteShake  = 0x1f
-	dsbyteCShake = 0x04
-	rate128      = 168
-	rate256      = 136
+	sfxShake  = 0x1f
+	sfxCShake = 0x04
+	rate128   = 168
+	rate256   = 136
 )
 
 func bytepad(input []byte, w int) []byte {
@@ -80,49 +71,51 @@ func leftEncode(value uint64) []byte {
 	return b[i-1:]
 }
 
-func newCShake(N, S []byte, rate int, dsbyte byte) ShakeHash {
-	c := cshakeState{state: state{rate: rate, dsbyte: dsbyte}}
+func newCShake(N, S []byte, sfx byte, shaId uint8) ShakeHash {
+	c := cshakeState{state: state{sfx: sfx, desc: Sha3Desc[shaId]}}
 
 	// leftEncode returns max 9 bytes
-	c.initBlock = make([]byte, 0, 9*2+len(N)+len(S))
-	c.initBlock = append(c.initBlock, leftEncode(uint64(len(N)*8))...)
-	c.initBlock = append(c.initBlock, N...)
-	c.initBlock = append(c.initBlock, leftEncode(uint64(len(S)*8))...)
-	c.initBlock = append(c.initBlock, S...)
-	c.Write(bytepad(c.initBlock, c.rate))
+	b := make([]byte, 0, 9*2+len(N)+len(S))
+	b = append(b, leftEncode(uint64(len(N)*8))...)
+	b = append(b, N...)
+	b = append(b, leftEncode(uint64(len(S)*8))...)
+	b = append(b, S...)
+	c.initBlock = bytepad(b, c.BlockSize())
+	c.Write(c.initBlock)
 	return &c
 }
 
 // Reset resets the hash to initial state.
 func (c *cshakeState) Reset() {
 	c.state.Reset()
-	c.Write(bytepad(c.initBlock, c.rate))
+	c.Write(c.initBlock)
 }
 
 // Clone returns copy of a cSHAKE context within its current state.
 func (c *cshakeState) Clone() ShakeHash {
 	b := make([]byte, len(c.initBlock))
 	copy(b, c.initBlock)
-	return &cshakeState{state: *c.clone(), initBlock: b}
+	return &cshakeState{state: c.state, initBlock: b}
 }
 
 // Clone returns copy of SHAKE context within its current state.
 func (c *state) Clone() ShakeHash {
-	return c.clone()
+	dup := *c
+	return &dup
 }
 
 // NewShake128 creates a new SHAKE128 variable-output-length ShakeHash.
 // Its generic security strength is 128 bits against all attacks if at
 // least 32 bytes of its output are used.
 func NewShake128() ShakeHash {
-	return &state{rate: rate128, dsbyte: dsbyteShake}
+	return &state{sfx: sfxShake, desc: Sha3Desc[SHAKE128]}
 }
 
 // NewShake256 creates a new SHAKE256 variable-output-length ShakeHash.
 // Its generic security strength is 256 bits against all attacks if
 // at least 64 bytes of its output are used.
 func NewShake256() ShakeHash {
-	return &state{rate: rate256, dsbyte: dsbyteShake}
+	return &state{sfx: sfxShake, desc: Sha3Desc[SHAKE256]}
 }
 
 // NewCShake128 creates a new instance of cSHAKE128 variable-output-length ShakeHash,
@@ -135,7 +128,7 @@ func NewCShake128(N, S []byte) ShakeHash {
 	if len(N) == 0 && len(S) == 0 {
 		return NewShake128()
 	}
-	return newCShake(N, S, rate128, dsbyteCShake)
+	return newCShake(N, S, sfxCShake, SHAKE128)
 }
 
 // NewCShake256 creates a new instance of cSHAKE256 variable-output-length ShakeHash,
@@ -148,7 +141,7 @@ func NewCShake256(N, S []byte) ShakeHash {
 	if len(N) == 0 && len(S) == 0 {
 		return NewShake256()
 	}
-	return newCShake(N, S, rate256, dsbyteCShake)
+	return newCShake(N, S, sfxCShake, SHAKE256)
 }
 
 // ShakeSum128 writes an arbitrary-length digest of data into hash.
