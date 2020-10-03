@@ -157,28 +157,25 @@ func (c *state) Read(out []byte) (nread int, err error) {
 	rate := c.BlockSize()
 	nread = len(out)
 
+	// finalize if not done yet
 	if !c.isSquezing {
 		c.finalize_sha3()
 	}
 
 	// Copy-out bytes that are still kept in the buffer
-	if c.idx != 0 {
-		l := min(c.idx, len(out))
-		idx := rate - c.idx
-		copy(out, buf[idx:idx+l])
-		out = out[l:]
-		c.idx -= l
-	}
+	l := min(c.idx, len(out))
+	copy(out, buf[rate-c.idx:rate-c.idx+l])
+	out = out[l:]
+	c.idx -= l
 
-	l := len(out)
-	if l == 0 {
+	if len(out) == 0 {
 		// nothing else todo
 		return nread, nil
 	}
 
 	// copy out full blocks and squeeze. at this point
 	// there is no more data in the buffer.
-	nblocks := l / rate
+	nblocks := len(out) / rate
 	for nblocks > 0 {
 		keccakF1600(&c.a)
 		copyOut(c, out[:rate])
