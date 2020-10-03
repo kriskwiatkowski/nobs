@@ -132,6 +132,24 @@ func (c *state) Write(in []byte) (nwrite int, err error) {
 	return nwrite, nil
 }
 
+func (c *state) finalize_sha3() {
+	buf := c.data.asBytes()[:]
+	rate := c.BlockSize()
+
+	// there is at least one byte free, otherise
+	// buf would be squezed already
+	for i := c.idx + 1; i < rate; i++ {
+		buf[i] = 0
+	}
+	buf[c.idx] = c.sfx
+	buf[rate-1] |= 0x80
+	xorIn(c, buf[:rate])
+	keccakF1600(&c.a)
+	copyOut(c, buf[:rate])
+	c.idx = rate // now, idx indicates unconsumed amount of data
+	c.isSquezing = true
+}
+
 // Read changes state of the hash if called first time. It will
 // return len(out) bytes of data. Never fails.
 func (c *state) Read(out []byte) (nread int, err error) {
@@ -140,18 +158,7 @@ func (c *state) Read(out []byte) (nread int, err error) {
 	nread = len(out)
 
 	if !c.isSquezing {
-		// there is at least one byte free, otherise
-		// buf would be squezed already
-		for i := c.idx + 1; i < rate; i++ {
-			buf[i] = 0
-		}
-		buf[c.idx] = c.sfx
-		buf[rate-1] |= 0x80
-		xorIn(c, buf[:rate])
-		keccakF1600(&c.a)
-		copyOut(c, buf[:rate])
-		c.idx = rate // now, idx indicates unconsumed amount of data
-		c.isSquezing = true
+		c.finalize_sha3()
 	}
 
 	// Copy-out bytes that are still kept in the buffer
@@ -209,6 +216,21 @@ func (c *state) Sum(in []byte) []byte {
 	in = in[:l+c.Size()]
 	c.Read(in[l:])
 	return in
+}
+
+func (c *state) digest(out, in []byte) {
+	nread := len(out)
+	rate := c.BlockSize()
+	nblocks := nread / rate
+	c.Write(in)
+	c.finalize_sha3()
+	for i := 0; i < nblocks-1; i++ {
+		keccakF1600(&c.a)
+		copyOut(c, out[:])
+		out = out[rate:]
+	}
+	keccakF1600(&c.a)
+	copyOut(c, out[:len(out)])
 }
 
 // New224 creates a new SHA3-224 hash.
