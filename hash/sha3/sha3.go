@@ -179,22 +179,17 @@ func (c *state) Read(out []byte) (nread int, err error) {
 	// copy out full blocks and squeeze. at this point
 	// there is no more data in the buffer.
 	nblocks := l / rate
-	for i := 0; i < nblocks; i++ {
+	for nblocks > 0 {
 		keccakF1600(&c.a)
 		copyOut(c, out[:rate])
 		out = out[rate:]
-	}
-
-	// produce more if needed
-	l = len(out)
-	if l == 0 {
-		return nread, nil
+		nblocks--
 	}
 
 	keccakF1600(&c.a)
 	copyOut(c, buf)
-	copy(out, buf[:l])
-	c.idx = rate - l
+	copy(out, buf[:len(out)])
+	c.idx = rate - len(out)
 	return nread, nil
 }
 
