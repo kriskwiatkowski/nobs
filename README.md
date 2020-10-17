@@ -1,3 +1,3 @@
 # NOBS Crypto
 
-Cryptographic implementation of quantum-resistant primitives in Go.
+Cryptographic implementation of quantum-resistant primitives in ~Go~ Rust.
