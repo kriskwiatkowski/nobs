@@ -14,12 +14,21 @@ func p1(X uint32) uint32 {
 	return X ^ rotl32(15, X) ^ rotl32(23, X)
 }
 
-func ff1(X uint32, Y uint32, Z uint32) uint32 {
-	return (X & Y) | ((X | Y) & Z)
+// Choose bitwise between A or B controlled by C (gg1). A if C=1 otherwise B
+// Optimized as per, "Hackers Delight" (7-1, MUX operation), can be used
+// to reduce number of operations.
+func ch(M uint32, A uint32, B uint32) uint32 {
+    return ((A ^ B) & M) ^ B
 }
 
-func gg1(X uint32, Y uint32, Z uint32) uint32 {
-	return (X & Y) ^ ((^X) & Z) // Can be also (Z ^ (X & (Y ^ Z)))
+// Majority function (ff1) - takes the majority value as the final result. If two
+// or three of the variables are 1, then the result is 1, otherwise 0.
+func maj(X uint32, Y uint32, Z uint32) uint32 {
+	// Y^Z works as a mask. If mask is 0, then majority is dictated by
+	// value of either Y or Z (doesn't matter, as they are the same, but we
+	// don't know if result is 0 or 1). Otherwise Y!=Z and results is
+	// going to dicated by X.
+	return ch(Y^Z, X, Y)
 }
 
 func r1(
@@ -43,8 +52,8 @@ func r2(
 
 	A12 := rotl32(12, A)
 	SS1 := rotl32(7, A12+E+TJ)
-	TT1 := ff1(A, *B, C) + *D + (SS1 ^ A12) + Wj
-	TT2 := gg1(E, *F, G) + *H + SS1 + Wi
+	TT1 := maj(A, *B, C) + *D + (SS1 ^ A12) + Wj
+	TT2 := ch(E, *F, G) + *H + SS1 + Wi
 
 	*B = rotl32(9, *B)
 	*D = TT1
