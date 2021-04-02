@@ -55,3 +55,6 @@ BenchmarkEncrypt_CSIDH_p512 	       7	 185828599 ns/op
 ./mkem.test -test.run="notest" -test.bench=BenchmarkMultiEncrypt_CSIDH_100keys -test.cpu=1
 BenchmarkMultiEncrypt_CSIDH_100keys 	       1	1025902914 ns/op
 ```
+
+### Paper
+Details of this construction has been presented at (ASIACRYPT 2020)[https://www.youtube.com/watch?v=0ijRmXt01Ww] and are described in the (ia.cr/2020/1107)[ia.cr/2020/1107]
