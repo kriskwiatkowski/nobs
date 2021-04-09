@@ -7,7 +7,6 @@
 // * Improve reseeding so that code returns an error when reseed is needed
 // * Add case with derivation function (maybe)
 // * Code cleanup
-// * Implement benchmark
 // * Add rest of the test vectors from CAVP
 
 package drbg
