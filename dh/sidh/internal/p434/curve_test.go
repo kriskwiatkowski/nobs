@@ -98,3 +98,20 @@ func BenchmarkThreePointLadder(b *testing.B) {
 		ScalarMul3Pt(&curve, &threePointLadderInputs[0], &threePointLadderInputs[1], &threePointLadderInputs[2], uint(len(scalar3Pt)*8), scalar3Pt[:])
 	}
 }
+
+func BenchmarkTraverseTreeSharedKeyA(b *testing.B) {
+	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
+	var xR = ProjectivePoint{X: affineXP, Z: params.OneFp2}
+	for n := 0; n < b.N; n++ {
+		traverseTreeSharedKeyA(&curve, &xR)
+	}
+}
+
+func BenchmarkPow2k(b *testing.B) {
+	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
+	var xP = ProjectivePoint{X: affineXP, Z: params.OneFp2}
+	var cparams = CalcCurveParamsEquiv4(&curve)
+	for n := 0; n < b.N; n++ {
+		Pow2k(&xP, &cparams, 2)
+	}
+}
