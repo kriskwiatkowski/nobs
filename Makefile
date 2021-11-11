@@ -11,6 +11,17 @@ BENCH_OPTS   ?= -v -bench=. -run="^_" -benchmem
 TEST_PATH    ?= ./...
 DBG 		 = 1
 OPTS_ENV	 =
+OPTS_TAGS    ?= -tags noasm
+ARCH = $(shell uname -m)
+
+ifeq ($(ARCH), ppc64le)
+	NOASM+=1
+endif
+
+ifeq ($(ARCH), riscv64)
+	NOASM+=1
+	OPTS_TAGS+= -timeout 0
+endif
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
