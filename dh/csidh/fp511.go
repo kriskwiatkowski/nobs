@@ -1,3 +1,5 @@
+// +build noasm amd64 arm64 ppc64le riscv64
+
 package csidh
 
 import (
